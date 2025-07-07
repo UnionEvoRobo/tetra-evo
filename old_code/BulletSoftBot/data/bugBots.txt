@@ -1,0 +1,112 @@
+is placed below the floor
+
+ibabcrababrbcbbgbbdbrdaca
+
+Position of Node 0, x: 4.929894 y: -5.690971 z: -1.343215
+Position of Node 1, x: -1.099410 y: -7.119387 z: -1.398755
+Position of Node 2, x: -1.657571 y: -0.415706 z: -0.167302
+Position of Node 3, x: 2.661014 y: -2.113328 z: 4.259975
+Position of Node 4, x: -2.260583 y: -5.046417 z: 5.527513
+Position of Node 0, x: 4.359771 y: -13.757651 z: -1.585610
+Position of Node 1, x: -0.573344 y: -12.502851 z: 3.118268
+Position of Node 2, x: 0.180553 y: -7.077874 z: -0.485097
+Position of Node 3, x: 4.578600 y: -7.819754 z: 3.208427
+Position of Node 4, x: -2.294114 y: -5.635701 z: 6.309715
+Position of Node 0, x: 4.359771 y: -13.757651 z: -1.585610
+Position of Node 1, x: -0.573344 y: -12.502851 z: 3.118268
+Position of Node 2, x: 0.180553 y: -7.077874 z: -0.485097
+Position of Node 3, x: 4.578600 y: -7.819754 z: 3.208427
+Position of Node 4, x: -2.294114 y: -5.635701 z: 6.309715
+Position of Node 0, x: 3.564513 y: -17.396555 z: -0.925938
+Position of Node 1, x: 0.176033 y: -15.033830 z: 4.813624
+Position of Node 2, x: 0.820973 y: -11.141544 z: -0.984015
+Position of Node 3, x: 5.217985 y: -11.178605 z: 3.191248
+Position of Node 4, x: -0.915861 y: -7.623884 z: 5.305711
+Position of Node 0, x: 2.501335 y: -20.689907 z: 0.391958
+Position of Node 1, x: 0.670139 y: -17.276634 z: 5.908578
+Position of Node 2, x: 1.021732 y: -14.872152 z: -1.295698
+Position of Node 3, x: 6.028203 y: -14.675243 z: 3.165426
+Position of Node 4, x: 0.729756 y: -10.319334 z: 4.045744
+Position of Node 0, x: 0.376154 y: -33.976620 z: 9.005141
+Position of Node 1, x: 2.755713 y: -28.195288 z: 6.444968
+Position of Node 2, x: 0.374021 y: -32.138691 z: 1.791823
+Position of Node 3, x: 5.805703 y: -34.440823 z: 4.393276
+Position of Node 4, x: 6.895453 y: -28.729824 z: 0.809402
+
+bug fixed
+
+
+
+
+
+
+
+
+
+
+bug still being defined but does not simulate
+
+Gen 6 of 1406245393.best*
+ibaabrdbcarcbbarccdcsddbb
+
+Time seed: 1406245393
+MAX_POPULATION = 5
+MAX_GENERATION = 2000
+NUM_EXPANSIONS = 100
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+
+look at 1406245393.debug for debug info
+
+
+
+
+
+bug still being defined but does not simulate
+
+Gen 784 of 1406250966.best*
+ibaccgcdcdsbbccrdbacrdcca  
+fitness: 414720000
+
+Time seed: 1406250966
+MAX_POPULATION = 50
+MAX_GENERATION = 1000
+NUM_EXPANSIONS = 30
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+
+
+
+cylinder is just in the middle
+
+Gen 554 1406251166.best*
+ibcdbsddbcrbdbdsadadrbddd  
+fitness 22500
+
+Time seed: 1406251166
+MAX_POPULATION = 5
+MAX_GENERATION = 1000
+NUM_EXPANSIONS = 100
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+
+
+cylinder is just in the middle
+
+Gen 559 1406251166.best*
+ibbdbsddbcrbdbdsadbdrcddd  
+fitness 28217935134720000
+
+Time seed: 1406251166 
+MAX_POPULATION = 5
+MAX_GENERATION = 1000
+NUM_EXPANSIONS = 100
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+
+
+
+Placed below floor?
+Grammar: rules = ibaca rcaac sbacc rdaad rdbda  fitness = 161202.500000
+
+

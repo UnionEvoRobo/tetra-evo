@@ -1,0 +1,26 @@
+Time seed: 1411955825
+MAX_POPULATION = 10
+MAX_GENERATION = 1000
+NUM_EXPANSIONS = 30
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+WRITE_TO_DEBUG = 0
+PRINT_TO_SCREEN = 0
+DEBUG_NODE_POSITIONS = 0
+DEBUG_PLACEMENT = 0
+STEP_SIMULATION = 0
+TEXTURES = 0
+Generation    1: Grammar: rules = iabab gbdba gacac gbcca radab  fitness = 81.215820
+Generation    2: Grammar: rules = iabab gbdba gacac gacbb saccd  fitness = 111.043594
+Generation    3: Grammar: rules = iabab gbdba gacac gacbb saccd  fitness = 111.043594
+Generation    4: Grammar: rules = iabab gbdba gacac gbcca saccd  fitness = 111.043594
+Generation    5: Grammar: rules = iabab gbdba gacac gbcca scccd  fitness = 111.043594
+Generation    6: Grammar: rules = iabab gbdba gacac gbcca scccd  fitness = 111.043594
+Generation    7: Grammar: rules = iabab gbdba gacac gbcca scccd  fitness = 111.043594
+Generation    8: Grammar: rules = iabab gbdba gacac gbcca scccd  fitness = 111.043594
+Generation    9: Grammar: rules = iabab gbdba gacac gbcca scccd  fitness = 111.043594
+Generation   10: Grammar: rules = iccbd rdbda gabad gccdb sbcdc  fitness = 114.704811
+Generation   11: Grammar: rules = iccbd rdbda gabad gccdb sbcdc  fitness = 114.704811
+Generation   12: Grammar: rules = iccbd rdbda gabad gccdb sbcdc  fitness = 114.704811
+Generation   13: Grammar: rules = iccbd rdbda gabad gccdb sbcdc  fitness = 114.704811
+Generation   14: Grammar: rules = iccbd rdbda gabad gccdb sbcdc  fitness = 114.704811

@@ -1,0 +1,32 @@
+Time seed: 1410918610
+MAX_POPULATION = 10
+MAX_GENERATION = 1000
+NUM_EXPANSIONS = 30
+MAX_WAIT_TIME = 20
+MAX_EVAL_TIME = 20
+WRITE_TO_DEBUG = 0
+PRINT_TO_SCREEN = 0
+DEBUG_NODE_POSITIONS = 0
+DEBUG_PLACEMENT = 0
+STEP_SIMULATION = 0
+TEXTURES = 0
+Generation    1: Grammar: rules = icbdb rabcd gbadd rcacb sbcdc  fitness = 36.938118
+Generation    2: Grammar: rules = idbaa rdbad rdcdd gccca rccbc  fitness = 46.528778
+Generation    3: Grammar: rules = idbaa rabcd rdcdd gccca rccbc  fitness = 95.205093
+Generation    4: Grammar: rules = idbaa rabcd rdcdd gccca rccbc  fitness = 95.205093
+Generation    5: Grammar: rules = idddd rdbad rccdd rbcca racbc  fitness = 107.231316
+Generation    6: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation    7: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation    8: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation    9: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   10: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   11: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   12: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   13: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   14: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   15: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   16: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   17: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   18: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   19: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
+Generation   20: Grammar: rules = iaaaa rbbad rdcdd gccca gacbc  fitness = 182.003616
