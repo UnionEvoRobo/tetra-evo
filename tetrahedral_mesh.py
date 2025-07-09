@@ -1,8 +1,8 @@
 """
 Represents a tetrahedron comprised of faces.
 
-July 7th, 2025
 By Thomas Breimer
+July 7th, 2025
 """
 
 import numpy as np
@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from stl import mesh
 import random
 import os
+from collections import deque
+from grammar import Grammar
 
 DEFAULT_MESH_FILENAME = "my_mesh.stl"
 
@@ -26,10 +28,10 @@ class Face:
                                order of the vertices in the tuple decides which way the normal vector points.
                                Use the right hand rule!
     """
-    name: str
+    label: str
     vertices: tuple[int, int, int]  # indices in TetrahedralMesh.vertices list
 
-    def measure_distances(self, vertices):
+    def measure_distances(self, vertices) -> np.ndarray:
         """
         Returns the distances between points of the face as a np.ndarray. Elements are absolute distances v1-v0, v2-v1, v2-v0 
 
@@ -44,7 +46,7 @@ class Face:
 
         return np.array([np.linalg.norm(v1-v0), np.linalg.norm(v2-v1), np.linalg.norm(v2-v0)])
 
-@dataclass
+
 class TetrahedralMesh:
     """
     Represents a tetrahedral mesh, defined as a collection of vertices and faces.
@@ -54,10 +56,28 @@ class TetrahedralMesh:
                                      the vertex's coordinates in space.
         faces (list[Face]) A list of faces.
     """
-    vertices: list[np.ndarray] = field(default_factory=list)
-    faces: list[Face] = field(default_factory=list)
+    
+    def __init__(self, grammar: Grammar):
+        """
+        Make a simple mesh with a single tetrahedron, with faces named "A", "B", "C", "D".
+        Will be saved in the meshes directory.
 
-    def find_vertex(self, target):
+        Parameters:
+            grammar (Grammar): Grammar to use to grow the mesh.
+
+        Returns:
+            TetrahedralMesh: A simple mesh with a single tetrahedron.
+        """
+
+        self.vertices = []
+        self.faces = []
+        self.grammar = grammar
+        self.queue = deque()
+
+        self.add_face("A", [np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0.5, math.sqrt(3)/2, 0])])
+        self.grow_face(0, ["B", "C", "D"])
+
+    def find_vertex(self, target) -> int:
         """
         Find the index of a vertex in self.vertices if it exists.
 
@@ -92,7 +112,7 @@ class TetrahedralMesh:
             self.vertices.append(new_vertex)
             return len(self.vertices) - 1
 
-    def add_face(self, name: str, points: list):
+    def add_face(self, name: str, points: list) -> Face:
         """
         Adds a face to the mesh.
 
@@ -102,6 +122,9 @@ class TetrahedralMesh:
                            in which case they represent points already in the mesh as an index of self.points.
                            Alternatively, elements may be of type np.ndarray, in which case they represent a new
                            point to be added to the mesh, and thus the 3 elements of the np.ndarray should be type float.
+
+        Returns:
+            Face: Face object that was just added.
         """
 
         # Handle different vertex types and create new ones if necessary.
@@ -120,8 +143,12 @@ class TetrahedralMesh:
             else:
                 raise TypeError("Expected type int or np.ndarray as vertex in new face, but got {}!".format(type(point)))
 
-        # Make and add new face
-        self.faces.append(Face(name, tuple(vertices)))
+        # Make, add, and queue new face
+        new_face = Face(name, tuple(vertices))
+        self.faces.append(new_face)
+        self.queue.append(new_face)
+
+        return new_face
 
     def grow_face(self, face: Face, new_face_names: list[str]):
         """
@@ -179,7 +206,10 @@ class TetrahedralMesh:
         else:
             raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
         
-        face.name = new_name
+        face.label = new_name
+
+        # Requeue this face
+        self.queue.append(face)
 
     def split_face(self, face, new_names: list):
         """
@@ -215,7 +245,7 @@ class TetrahedralMesh:
         self.add_vertex(v15)
         self.add_vertex(v25)
 
-        # Add four new faces
+        # Add and enqueue four new faces
         self.add_face(new_names[0], [v0, v05, v25])
         self.add_face(new_names[1], [v05, v1, v15])
         self.add_face(new_names[2], [v05, v15, v25])
@@ -237,9 +267,9 @@ class TetrahedralMesh:
             for j in range(3):
                 my_mesh.vectors[i][j] = vertices[f[j],:]
 
-        my_mesh.save(filename)
+        my_mesh.save(os.path.join("meshes", filename))
 
-    def collect_vertices(self):
+    def collect_vertices(self) -> np.ndarray:
         """
         Returns a np.ndarray containing all vertices in the mesh, each element itself being
         a np.ndarray of length 3 representing the coordinates of a single vertex.
@@ -285,7 +315,27 @@ class TetrahedralMesh:
 
         return np.array(distances)
     
-def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME):
+    def apply_rule(self):
+        """
+        Apply a production rule on the next face in the queue.
+        """
+
+        next_face = self.queue.popleft()
+        label = next_face.label
+
+        operation = self.grammar.get_rule_operation(label)
+        rhs = self.grammar.get_rule_rhs(label)
+
+        if operation == "relabel":
+            self.rename_face(next_face, rhs[0])
+        elif operation == "grow":
+            self.grow_face(next_face, rhs)
+        elif operation == "divide":
+            self.split_face(next_face, rhs)
+        else:
+            raise ValueError("Unexpected operation {} in rule.".format(operation))
+    
+def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:
     """
     Make a simple mesh with a single tetrahedron, with faces named "A", "B", "C", "D".
     Will be saved in the meshes directory.
@@ -299,18 +349,18 @@ def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME):
 
     # Make symmertic triangle at origin
     my_mesh = TetrahedralMesh()
-    my_mesh.add_face("A", [np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0.5, math.sqrt(3)/2, 0])])
-    my_mesh.grow_face(0, ["B", "C", "D"])
 
     """ Uncomment for craziness!
-    for i in range(100):
-        numer = random.randint(0, len(my_mesh.faces) - 1)
-        my_mesh.grow_face(numer, ["E", "F", "G"])
-        numer = random.randint(0, len(my_mesh.faces) - 1)
-        my_mesh.split_face(numer, ["H", "I", "J", "K"])
+    for i in range(1000):
+        if random.random() < 0.5:
+            numer = random.randint(0, len(my_mesh.faces) - 1)
+            my_mesh.grow_face(numer, ["E", "F", "G"])
+        else:
+            numer = random.randint(0, len(my_mesh.faces) - 1)
+            my_mesh.split_face(numer, ["H", "I", "J", "K"])
     """
 
-    my_mesh.export_to_stl(os.path.join("meshes", mesh_filename))
+    my_mesh.export_to_stl(mesh_filename)
 
 if __name__ == "__main__":
     make_tetra()
