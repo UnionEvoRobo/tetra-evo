@@ -33,7 +33,7 @@ class Grammar:
 
         Parameters:
             lhs (str): Face label for the lhs of the rule.
-            func (str): Operation to be preformd on the lhs. Can be "relabel", "grow", or "divide". 
+            func (str): Operation to be preformed on the lhs. Can be "relabel", "grow", or "divide". 
             rhs (list[str]): Face labels to be generated on application of the rule.
         """
         new_rule = Rule(func, rhs)
@@ -60,7 +60,7 @@ class Grammar:
             label (str): LHS of rule rhs to get.
 
         Return:
-            list[str]: "relabel", "grow", or "divide".
+            list[str]: The face labels resulting from the operation, the rhs.
         """
 
         return self.rules[label].rhs
