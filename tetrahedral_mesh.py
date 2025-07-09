@@ -6,9 +6,13 @@ By Thomas Breimer
 """
 
 import numpy as np
+import math
 from dataclasses import dataclass, field
-from collections import defaultdict
 from stl import mesh
+import random
+import os
+
+DEFAULT_MESH_FILENAME = "my_mesh.stl"
 
 @dataclass
 class Face:
@@ -18,10 +22,27 @@ class Face:
     Attributes:
         name (str): Name of the face, usually a letter.
         vertices (tuple[int]): The three vertices of the face, where each int represents the index of the 
-                               vertex in the associated TetrahedralMesh.vertices list.
+                               vertex in the associated TetrahedralMesh.vertices list. Order matters! The 
+                               order of the vertices in the tuple decides which way the normal vector points.
+                               Use the right hand rule!
     """
     name: str
-    vertices: tuple[int, int, int]  # indices into global vertex list
+    vertices: tuple[int, int, int]  # indices in TetrahedralMesh.vertices list
+
+    def measure_distances(self, vertices):
+        """
+        Returns the distances between points of the face as a np.ndarray. Elements are absolute distances v1-v0, v2-v1, v2-v0 
+
+        Parameters:
+            vertices (np.ndarray): The TetrahedralMesh.verices array containing the coordinates of points in the mesh.
+
+        Returns:
+            np.ndarray: Distances between vertices in the face.
+        """
+
+        v0, v1, v2 = [vertices[i] for i in self.vertices]
+
+        return np.array([np.linalg.norm(v1-v0), np.linalg.norm(v2-v1), np.linalg.norm(v2-v0)])
 
 @dataclass
 class TetrahedralMesh:
@@ -102,52 +123,194 @@ class TetrahedralMesh:
         # Make and add new face
         self.faces.append(Face(name, tuple(vertices)))
 
-    def grow_face(self, face: Face, new_face_names: list[str], scale: float):
+    def grow_face(self, face: Face, new_face_names: list[str]):
         """
         Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
         
         Parameters:
-            face (Face): Face object that will be grown.
+            face (Face): Face to grow. Can either be the face object itself or the index in self.faces.
             new_face_names (list[str]): Names of the new faces. Length should be 3.
             scale (float): How tall the new tetrahedron should be. Units TBD.
         """
 
-        assert face in self.faces, "Tried to grow a face {}, but it didn't exist in this mesh!".format(str(face))
-        assert len(new_face_names) == 3, "Expected three new faces names on face grow command, but got {}!".format(len(new_face_names))
+        # Parse args
+        if isinstance(face, int):
+            if face > -1 and face < len(self.faces):
+                face = self.faces[face]
+            else:
+                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
+        elif isinstance(face, Face):
+            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
+        else:
+            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
+        
+        assert len(new_face_names) == 3, "Expected 3 new faces names on face grow command, but got {}!".format(len(new_face_names))
 
         v0, v1, v2 = [self.vertices[i] for i in face.vertices]
+
+        length = face.measure_distances(self.vertices).mean()
 
         # Calculate apex point (normal direction + offset)
         normal = np.cross(v1 - v0, v2 - v0)
         normal = normal / np.linalg.norm(normal)
-        apex = (v0 + v1 + v2) / 3 + normal * scale
+        apex = (v0 + v1 + v2) / 3 + normal * length
 
         # Build new faces
         self.add_face(new_face_names[0], [v0, v1, apex])
-        self.add_face(new_face_names[0], [v1, v2, apex])
-        self.add_face(new_face_names[0], [v0, apex, v2])
+        self.add_face(new_face_names[1], [v1, v2, apex])
+        self.add_face(new_face_names[2], [v0, apex, v2])
+
+    def rename_face(self, face, new_name: str):
+        """
+        Rename a face! Specify the face by either the face object itself, or its index in self.faces.
+
+        Parameters:
+            face: Face to reaname. Can either be the face object itself or the index in self.faces.
+            new_name (str): The new name of the face.
+        """
+        # Parse args
+        if isinstance(face, int):
+            if face > -1 and face < len(self.faces):
+                face = self.faces[face]
+            else:
+                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
+        elif isinstance(face, Face):
+            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
+        else:
+            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
+        
+        face.name = new_name
+
+    def split_face(self, face, new_names: list):
+        """
+        Split a face into four smaller faces! Specify the face by either the face object itself, or its index in self.faces.
+
+        Parameters:
+            face: Face to reaname. Can either be the face objec itself or the index in self.faces.
+            new_names (list[str]): Names of the new faces. Should be 4.
+        """
+        # Parse args
+        if isinstance(face, int):
+            if face > -1 and face < len(self.faces):
+                face = self.faces[face]
+            else:
+                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
+        elif isinstance(face, Face):
+            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
+        else:
+            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
+        
+        # Get vertices of face to be split
+        v0, v1, v2 = [self.vertices[i] for i in face.vertices]
+
+        self.faces.remove(face) # Delete the face to be split
+
+        # Find midpoints for vertices of new faces
+        v05 = (v0 + v1) / 2
+        v15 = (v1 + v2) / 2
+        v25 = (v2 + v0) / 2
+
+        # Add points to mesh
+        self.add_vertex(v05)
+        self.add_vertex(v15)
+        self.add_vertex(v25)
+
+        # Add four new faces
+        self.add_face(new_names[0], [v0, v05, v25])
+        self.add_face(new_names[1], [v05, v1, v15])
+        self.add_face(new_names[2], [v05, v15, v25])
+        self.add_face(new_names[3], [v25, v15, v2])
 
     def export_to_stl(self, filename: str):
-        face_count = defaultdict(list)  # canonical key -> list of face indices
+        """
+        Export the mesh to a .stl file.
 
-        for i, face in enumerate(self.faces):
-            key = tuple(sorted(face.vertices))
+        Parameters:
+            filename (str): Name of the file to export.        
+        """
 
-        external_faces = [self.faces[i] for key, indices in face_count.items() if len(indices) == 1 for i in indices]
+        faces = self.collect_faces()
+        vertices = self.collect_vertices()
 
-        stl_faces = mesh.Mesh(np.zeros(len(external_faces), dtype=mesh.Mesh.dtype))
+        my_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+        for i, f in enumerate(faces):
+            for j in range(3):
+                my_mesh.vectors[i][j] = vertices[f[j],:]
 
-        for i, face in enumerate(external_faces):
-            v1, v2, v3 = [self.vertices[idx] for idx in face.vertices]
-            stl_faces.vectors[i] = np.array([v1, v2, v3])
+        my_mesh.save(filename)
 
-        stl_faces.save(filename)
+    def collect_vertices(self):
+        """
+        Returns a np.ndarray containing all vertices in the mesh, each element itself being
+        a np.ndarray of length 3 representing the coordinates of a single vertex.
 
-my_mesh = TetrahedralMesh()
-my_mesh.add_face("A", [np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0, 1, 0])])
-my_mesh.grow_face(my_mesh.faces[0], ["B", "C", "D"], 1.0)
+        Returns:
+            np.ndarray: An array containing all vertices in the mesh, each element itself being
+                        a np.ndarray of length 3 representing the coordinates of a single vertex.
+        """
 
-print(my_mesh.faces)
-print(my_mesh.vertices)
+        return np.array(self.vertices)
+    
+    def collect_faces(self):
+        """
+        Returns a 2D np.ndarray representing all the faces in the mesh.
 
-my_mesh.export_to_stl("my_mesh.stl")
+        Returns:
+            np.ndarray: A 2D np.ndarray with each element represening a face, and each element
+                        itself being a length 3 np.ndarray of integers which corresponds to the
+                        three points which make up the face. The integers correspond to the index
+                        of each vertex in self.vertices.
+        """
+
+        vertices_list = []
+
+        for face in self.faces:
+            vertices_list.append(face.vertices)
+
+        return np.array(vertices_list)
+    
+    def get_edge_distances(self):
+        """
+        Get the distance between all the points in every face.
+
+        Returns:
+            np.ndarray[np.ndarray]: A np.ndarray of np.ndarrays, each top level index representing a face,
+                                    and 2nd level indices representing absolute distances v1-v0, v2-v1, v2-v0.             
+        """
+
+        distances = []
+
+        for face in self.faces:
+            distances.append(face.measure_distances(self.vertices))
+
+        return np.array(distances)
+    
+def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME):
+    """
+    Make a simple mesh with a single tetrahedron, with faces named "A", "B", "C", "D".
+    Will be saved in the meshes directory.
+
+    Parameters:
+        mesh_filename (str): Filename to save mesh as.
+
+    Returns:
+        TetrahedralMesh: A simple mesh with a single tetrahedron.
+    """
+
+    # Make symmertic triangle at origin
+    my_mesh = TetrahedralMesh()
+    my_mesh.add_face("A", [np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0.5, math.sqrt(3)/2, 0])])
+    my_mesh.grow_face(0, ["B", "C", "D"])
+
+    """ Uncomment for craziness!
+    for i in range(100):
+        numer = random.randint(0, len(my_mesh.faces) - 1)
+        my_mesh.grow_face(numer, ["E", "F", "G"])
+        numer = random.randint(0, len(my_mesh.faces) - 1)
+        my_mesh.split_face(numer, ["H", "I", "J", "K"])
+    """
+
+    my_mesh.export_to_stl(os.path.join("meshes", mesh_filename))
+
+if __name__ == "__main__":
+    make_tetra()
