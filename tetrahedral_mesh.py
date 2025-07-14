@@ -12,6 +12,7 @@ from stl import mesh
 import random
 import os
 from collections import deque
+from pathlib import Path
 from grammar import Grammar
 
 DEFAULT_MESH_FILENAME = "my_mesh"
@@ -275,12 +276,13 @@ class TetrahedralMesh:
         self.add_face(new_names[2], [v05, v15, v25])
         self.add_face(new_names[3], [v25, v15, v2])
 
-    def export_to_stl(self, filename: str):
+    def export_to_stl(self, filename: str, folder: str = None):
         """
         Export the mesh to a .stl file.
 
         Parameters:
-            filename (str): Name of the file to export.        
+            filename (str): Name of the file to export.  
+            folder (str): Optionally, a folder to put the .stl in.      
         """
 
         faces = self.collect_faces()
@@ -291,7 +293,12 @@ class TetrahedralMesh:
             for j in range(3):
                 my_mesh.vectors[i][j] = vertices[f[j],:]
 
-        my_mesh.save(os.path.join("meshes", filename + ".stl"))
+        if folder is None:
+            my_mesh.save(os.path.join("meshes", filename + ".stl"))
+        else:
+            directory_path = Path(os.path.join(Path.cwd(), "meshes", folder))
+            directory_path.mkdir(parents=True, exist_ok=True)
+            my_mesh.save(os.path.join(directory_path, filename + ".stl"))
 
     def collect_vertices(self) -> np.ndarray:
         """
@@ -358,6 +365,45 @@ class TetrahedralMesh:
             self.split_face(next_face, rhs)
         else:
             raise ValueError("Unexpected operation {} in rule.".format(operation))
+        
+    def get_volume(self) -> float:
+        """
+        Gets the volume of the mesh.
+
+        Returns:
+            float: The volume of the mesh.
+        """
+        faces = self.collect_faces()
+        vertices = self.collect_vertices()
+
+        my_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
+        for i, f in enumerate(faces):
+            for j in range(3):
+                my_mesh.vectors[i][j] = vertices[f[j],:]
+
+        volume, cog, inertia = my_mesh.get_mass_properties()
+
+        return volume
+    
+    def get_num_faces(self) -> int:
+        """
+        Get the number of faces in the mesh/
+        
+        Returns:
+            int: The number of faces in the mesh.
+        """
+
+        return len(self.faces)
+    
+    def out_there_score(self) -> float:
+        """
+        Sums the total coordinates of all the vertices.
+
+        Returns:
+            float: The total coordinates of all the vertices.
+        """
+
+        return sum(sum(self.vertices))
     
 def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:
     """

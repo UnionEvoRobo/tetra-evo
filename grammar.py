@@ -8,6 +8,7 @@ July 9th, 2025
 import numpy as np
 from dataclasses import dataclass, field
 import random
+import copy
 
 @dataclass
 class Rule:
@@ -202,6 +203,21 @@ class Grammar:
         """
 
         return list(self.rules.items())
+    
+    def copy(self):
+        """
+        Copies this grammar and returns a new identical grammar.
+
+        Returns:
+            Grammar: A new identical Grammar.
+        """
+
+        new_grammar = Grammar(self.alphabet, self.operations)
+
+        for lhs, rule in self.rules.items():
+            new_grammar.add_rule(lhs[:], rule.operation[:], copy.deepcopy(rule.rhs))
+
+        return new_grammar
     
     def __str__(self):
         """

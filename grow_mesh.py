@@ -12,7 +12,7 @@ ITERS = 1900
 FILENAME = "my_mesh"
 
 ALPHABET = ["A", "B", "C", "D", "E", "F", "G"] # Labels
-OPERATIONS = {"rename": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
+OPERATIONS = {"relabel": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
 
 def make_example_grammar() -> Grammar:
     """
