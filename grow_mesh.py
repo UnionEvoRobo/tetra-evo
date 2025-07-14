@@ -11,6 +11,9 @@ from tetrahedral_mesh import TetrahedralMesh
 ITERS = 1900
 FILENAME = "my_mesh"
 
+ALPHABET = ["A", "B", "C", "D", "E", "F", "G"] # Labels
+OPERATIONS = {"rename": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
+
 def make_example_grammar() -> Grammar:
     """
     Generate an example grammar.
@@ -20,7 +23,7 @@ def make_example_grammar() -> Grammar:
         Grammar: A basic grammar.
     """
 
-    grammar = Grammar()
+    grammar = Grammar(ALPHABET, OPERATIONS)
 
     grammar.add_rule("A", "grow", ["D", "B", "F"])
     grammar.add_rule("B", "grow", ["A", "D", "F"])
