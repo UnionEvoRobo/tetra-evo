@@ -9,6 +9,10 @@ import random
 import time
 import datetime as dt
 from datetime import datetime
+from pathlib import Path
+import os
+import json
+import pandas as pd
 import numpy as np
 from grammar import Grammar
 from tetrahedral_mesh import TetrahedralMesh
@@ -27,7 +31,7 @@ class EvolutionRun:
     """
 
     def __init__(self, generations: int, population_size: int, num_elites: int, iters_per_run: int, mutuation_rate: float, 
-                 crossover_rate: float, crossover_strategy: str):
+                 crossover_rate: float, crossover_strategy: str, fitness_function: str, sort_reverse: bool, check_collision: bool):
         """
         Returns an EvolutionRun instance.
 
@@ -39,6 +43,9 @@ class EvolutionRun:
             mutation_rate (float): Rate at which to mutate.
             crossover_rate (float): Rate at which to crossover.
             crossover_strategy (str): "one" or "two" for single or double point crossover, "uniform" for uniform crossover. 
+            fitness_function (str): What fitness function to use.
+            sort_reverse (bool): Whether to sort solutions in descending order. Should be True if higher fitness is better.
+            check_collision (bool): Whether the mesh should block grow commands that overlap with the mesh.
         """
 
         self.generations = generations
@@ -48,6 +55,11 @@ class EvolutionRun:
         self.mutation_rate = mutuation_rate
         self.crossover_rate = crossover_rate
         self.crossover_strategy = crossover_strategy
+        self.fitness_function = fitness_function
+        self.sort_reverse = sort_reverse
+        self.check_collision = check_collision
+
+        self.best_fitness = []
 
         self.new_per_gen = self.population_size - self.num_elites # Num of new individuals per gen
 
@@ -63,6 +75,8 @@ class EvolutionRun:
         """
         Run the evolutionary algorithm.
         """
+
+        self.export_info()
 
         # Compute time
         self.last_gen_clock = time.time()
@@ -80,6 +94,7 @@ class EvolutionRun:
             print("")
             print("Generation {}".format(self.current_gen))
             print("Fitnesses:", [sublist[FITNESS_INDEX] for sublist in self.population])
+            self.best_fitness.append(self.population[0][FITNESS_INDEX])
 
             del self.population[-(self.new_per_gen):] # Delete all but the elites
 
@@ -90,7 +105,7 @@ class EvolutionRun:
 
             new_individuals = []
 
-            # Fill rest of population
+            # Fill rest of population !FIXME num_elites must be even or population will grow 
             while len(new_individuals) < self.new_per_gen:
                 # Pick one parent
                 p1 = self.population[np.random.choice(len(self.population), p=selection_probs)][GENOME_INDEX].copy()
@@ -127,7 +142,7 @@ class EvolutionRun:
             print(self.population[0][GENOME_INDEX])
 
             # Export .stl
-            best_mesh = TetrahedralMesh(self.population[0][GENOME_INDEX])
+            best_mesh = TetrahedralMesh(self.population[0][GENOME_INDEX], self.check_collision)
             for i in range(self.iters_per_run):
                 best_mesh.apply_rule()
             best_mesh.export_to_stl("gen{}_score{}".format(str(self.current_gen).zfill(4), self.population[0][FITNESS_INDEX]),
@@ -140,6 +155,52 @@ class EvolutionRun:
             print("Last gen time: {} | Gens remaining: {} | Time est: {}".
                   format(dt.timedelta(seconds=int(last_gen_time)), gens_remaining, dt.timedelta(seconds=int(last_gen_time* gens_remaining))))
 
+        self.export_fitness_log()
+
+    def export_fitness_log(self):
+        """
+        Exports the fitnesses.csv file of the best fitness per generation.
+        """
+
+        df = pd.DataFrame({
+            "gen": range(len(self.best_fitness)),
+            "best_fitness": self.best_fitness
+        })
+
+        current_file_path = Path(__file__).resolve().parent
+        filepath = os.path.join(current_file_path, "meshes", self.start_time, "fitnesses.csv")
+
+        df.to_csv(filepath, index=False)
+
+    def export_info(self):
+        """
+        Exports info.json.
+        """
+
+        info = {
+            "time": self.start_time,
+            "generations": self.generations,
+            "population_size": self.population_size, 
+            "num_elites": self.num_elites,
+            "iters_per_run": self.iters_per_run,
+            "mutation_rate": self.mutation_rate,
+            "crossover_rate": self.crossover_rate,
+            "crossover_strategy": self.crossover_strategy,
+            "fitness_function": self.fitness_function,
+            "sort_reverse": self.sort_reverse,
+            "check_collsion": self.check_collision
+        }
+
+        current_file_path = Path(__file__).resolve().parent
+
+        directory_path = Path(current_file_path, "meshes", self.start_time,)
+        directory_path.mkdir(parents=True, exist_ok=True)
+
+        filepath = os.path.join(directory_path, "info.json")
+
+        with open(filepath, 'w') as f:
+            json.dump(info, f, indent=4)
+
     def get_fitness(self, genome: Grammar) -> float:
         """
         Get fitness of a genome.
@@ -151,29 +212,35 @@ class EvolutionRun:
             float: The fitness of the grammar, in this case the volume of the resulting tetra.
         """
 
-        mesh = TetrahedralMesh(genome)
+        mesh = TetrahedralMesh(genome, self.check_collision)
 
         for i in range(self.iters_per_run):
             mesh.apply_rule()
 
-        score = mesh.dist_to_point(POINT)
-
-        return score
+        match self.fitness_function:
+            case "dist_to_point":
+                return mesh.dist_to_point(POINT)
+            case "out_there_score":
+                return mesh.out_there_score()
+            case "num_faces":
+                return mesh.get_num_faces()
 
     def sort_population(self):
         """
         Sorts the population.
         """
 
-        self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=False)
+        self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=self.sort_reverse)
 
 my_run = EvolutionRun(generations=100, 
                       population_size=50, 
-                      num_elites=24, 
-                      iters_per_run=50, 
+                      num_elites=20,
+                      iters_per_run=500, 
                       mutuation_rate=0.2, 
                       crossover_rate=0.5,
-                      crossover_strategy="one")
-
+                      crossover_strategy="one",
+                      fitness_function="num_faces",
+                      sort_reverse=True,
+                      check_collision=False)
 my_run.run()
 

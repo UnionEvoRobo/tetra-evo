@@ -77,13 +77,14 @@ class TetrahedralMesh:
         queue (deqeue): Queue that holds faces, determines which face will have a rule applied next.
     """
     
-    def __init__(self, grammar: Grammar = None):
+    def __init__(self, grammar: Grammar = None, check_collision = False):
         """
         Make a simple mesh with a single tetrahedron, with faces named "A", "B", "C", "D".
         Will be saved in the meshes directory.
 
         Parameters:
             grammar (Grammar): Grammar to use to grow the mesh.
+            check_collision (bool): Whether to check collision in grow rules. Defaults to False.
 
         Returns:
             TetrahedralMesh: A simple mesh with a single tetrahedron.
@@ -94,6 +95,7 @@ class TetrahedralMesh:
         self.tetra = []
         self.grammar = grammar
         self.queue = deque()
+        self.check_collision = check_collision
 
         # Grow seed by laying down points and vertices
         v0 = np.array([0, 0, 0])
@@ -365,7 +367,7 @@ class TetrahedralMesh:
         Finds the average distance of each plane to the origin, squares them, and sums them all up.
 
         Returns:
-            float: Sum of squares of distances from each place to the origin.
+            float: Sum of squares of distances from each planee to the origin.
         """
 
         to_return = 0
@@ -378,13 +380,9 @@ class TetrahedralMesh:
             dist = math.sqrt(v0*v0 + v1*v1 + v2*v2)
             to_return += dist*dist
 
-        for rule in self.grammar.rules.values():
-            if rule.operation == "divide":
-                to_return += to_return * 0.5
-
         return to_return * len(self.faces)
     
-    def dist_to_point(self, point):
+    def dist_to_point(self, point) -> float:
         """
         Returns the distance between a given point and the closest point in the mesh.
         
@@ -405,7 +403,7 @@ class TetrahedralMesh:
 
         return smallest_dist
     
-    def grow_face(self, face: Face, new_face_names: list[str]):
+    def grow_face(self, face: Face, new_face_names: list[str]) -> bool:
         """
         Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
         Also computes whether the grow will intersect the mesh, in which case the face is not
@@ -442,19 +440,20 @@ class TetrahedralMesh:
         apex = (v0 + v1 + v2) / 3 + normal
         
         # Check any collision between new tetra and mesh using trimesh
-        """
-        my_mesh = self.get_trimesh()
-        manager = CollisionManager()
-        manager.add_object("my_mesh", my_mesh)
+        if self.check_collision:
+            my_mesh = self.get_trimesh()
+            manager = CollisionManager()
+            manager.add_object("my_mesh", my_mesh)
 
-        new_vertices = np.array([v0, v1, v2, apex])
-        new_tetra_mesh = trimesh.Trimesh(new_vertices, TETRA_FACES)
-        manager.add_object("tetra_mesh", new_tetra_mesh)
+            new_vertices = np.array([v0, v1, v2, apex])
+            new_tetra_mesh = trimesh.Trimesh(new_vertices, TETRA_FACES)
+            manager.add_object("tetra_mesh", new_tetra_mesh)
 
-        print(manager.min_distance_internal())
-        if manager.min_distance_internal() < -TOLEREANCE:
-            return False
-        """
+            print(manager.min_distance_internal())
+
+            if manager.min_distance_internal() < -TOLEREANCE:
+                return False
+
 
         # Build new faces & store tetra
         self.add_face(new_face_names[0], [v0, v1, apex])
@@ -479,18 +478,18 @@ def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:
     # Make symmertic triangle at origin
     my_mesh = TetrahedralMesh()
 
+    """" grow the devil beyblade
     my_mesh.grow_face(0, ["A", "B", "C"])
-
     for i in range(10):
         print(my_mesh.grow_face(len(my_mesh.faces) - 3, ["A", "B", "C"]))
 
-        """"""
     """
+
     print("Faces: {}".format(my_mesh.faces))
     print("Vertices: {}".format(my_mesh.vertices))
     print("Tetra: {}".format(my_mesh.tetra))
     print("Edge distances by face: {}".format(my_mesh.get_edge_distances()))
-    """
+
 
     my_mesh.export_to_stl(mesh_filename, "test")
 
