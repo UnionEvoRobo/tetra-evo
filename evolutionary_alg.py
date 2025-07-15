@@ -16,6 +16,8 @@ from tetrahedral_mesh import TetrahedralMesh
 ALPHABET = ["A", "B", "C", "D", "E", "F", "G"]
 OPERATIONS = {"relabel": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
 
+POINT = [25, 0, 25]
+
 GENOME_INDEX = 0
 FITNESS_INDEX = 1
 
@@ -154,22 +156,22 @@ class EvolutionRun:
         for i in range(self.iters_per_run):
             mesh.apply_rule()
 
-        score = mesh.get_num_faces()
+        score = mesh.dist_to_point(POINT)
 
         return score
 
     def sort_population(self):
         """
-        Sorts the population by decreasing fitness.
+        Sorts the population.
         """
 
-        self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=True)
+        self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=False)
 
 my_run = EvolutionRun(generations=100, 
                       population_size=50, 
                       num_elites=24, 
-                      iters_per_run=200, 
-                      mutuation_rate=0.1, 
+                      iters_per_run=50, 
+                      mutuation_rate=0.2, 
                       crossover_rate=0.5,
                       crossover_strategy="one")
 

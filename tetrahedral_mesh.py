@@ -8,7 +8,8 @@ July 7th, 2025
 import numpy as np
 import math
 from dataclasses import dataclass, field
-from stl import mesh
+import trimesh
+from trimesh.collision import CollisionManager
 import random
 import os
 from collections import deque
@@ -16,6 +17,12 @@ from pathlib import Path
 from grammar import Grammar
 
 DEFAULT_MESH_FILENAME = "my_mesh"
+TOLEREANCE = 1e-10 # Floating point tolerance for collisions
+TETRA_FACES = np.array([
+    [0, 1, 2],
+    [0, 1, 3],
+    [0, 2, 3],
+    [1, 2, 3]])
 
 @dataclass
 class Face:
@@ -46,7 +53,17 @@ class Face:
         v0, v1, v2 = [vertices[i] for i in self.vertices]
 
         return np.array([np.linalg.norm(v1-v0), np.linalg.norm(v2-v1), np.linalg.norm(v2-v0)])
+    
+@dataclass
+class Tetra:
+    """
+    Represents a tetrahedron, defined by four points in space.
+    
+    Attributes:
+        vertices (list[np.ndarray[float]]): A list of the four points making up the tetrahedron.
+    """
 
+    vertices: list[np.ndarray[float]]
 
 class TetrahedralMesh:
     """
@@ -74,34 +91,28 @@ class TetrahedralMesh:
 
         self.vertices = []
         self.faces = []
+        self.tetra = []
         self.grammar = grammar
         self.queue = deque()
-        
-        """"
-        # Grow seed by laying down a face and growing it (bad- A's normal will point inward)
-        self.add_face("A", [np.array([0, 0, 0]), np.array([1, 0, 0]), np.array([0.5, 0, math.sqrt(3)/2])])
-        self.grow_face(0, ["B", "C", "D"])
-        """
 
         # Grow seed by laying down points and vertices
-        v0 = self.add_vertex(np.array([0, 0, 0]))
-        v1 = self.add_vertex(np.array([1, 0, 0]))
-        v2 = self.add_vertex(np.array([0.5, 0, math.sqrt(3)/2]))
-        v3 = self.add_vertex(np.array([0.5, math.sqrt(2/3), math.sqrt(1/12)]))
+        v0 = np.array([0, 0, 0])
+        v1 = np.array([1, 0, 0])
+        v2 = np.array([0.5, 0, math.sqrt(3)/2])
+        v3 = np.array([0.5, math.sqrt(2/3), math.sqrt(1/12)])
+
+        # self.tetra is just used for bookkeeping to ensure there's no ingrowth
+        # self.tetra.append(Tetra([v0, v1, v2, v3]))
+
+        v0 = self.add_vertex(v0)
+        v1 = self.add_vertex(v1)
+        v2 = self.add_vertex(v2)
+        v3 = self.add_vertex(v3)
 
         self.add_face("A", [v0, v1, v2])
         self.add_face("B", [v0, v2, v3])
         self.add_face("C", [v1, v3, v2])
         self.add_face("D", [v0, v3, v1])
-
-        """ 
-        # Test split & grow normals
-        self.split_face(0, ["A", "B", "C", "D"])
-        self.grow_face(0, ["A", "A", "A"])
-        self.grow_face(1, ["A", "A", "A"])
-        self.grow_face(2, ["A", "A", "A"])
-        self.grow_face(3, ["A", "A", "A"])
-        """
 
     def find_vertex(self, target) -> int:
         """
@@ -138,7 +149,7 @@ class TetrahedralMesh:
             self.vertices.append(new_vertex)
             return len(self.vertices) - 1
 
-    def add_face(self, name: str, points: list) -> Face:
+    def add_face(self, name: str, points: list, enqueue: bool = True) -> Face:
         """
         Adds a face to the mesh.
 
@@ -148,6 +159,7 @@ class TetrahedralMesh:
                            in which case they represent points already in the mesh as an index of self.points.
                            Alternatively, elements may be of type np.ndarray, in which case they represent a new
                            point to be added to the mesh, and thus the 3 elements of the np.ndarray should be type float.
+            enqueue (bool): Whether to enqeue the new face. Defaults to True.
 
         Returns:
             Face: Face object that was just added.
@@ -172,45 +184,11 @@ class TetrahedralMesh:
         # Make, add, and queue new face
         new_face = Face(name, tuple(vertices))
         self.faces.append(new_face)
-        self.queue.append(new_face)
+
+        if enqueue:
+            self.queue.append(new_face)
 
         return new_face
-
-    def grow_face(self, face: Face, new_face_names: list[str]):
-        """
-        Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
-        
-        Parameters:
-            face (Face): Face to grow. Can either be the face object itself or the index in self.faces.
-            new_face_names (list[str]): Names of the new faces. Length should be 3.
-        """
-
-        # Parse args
-        if isinstance(face, int):
-            if face > -1 and face < len(self.faces):
-                face = self.faces[face]
-            else:
-                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
-        elif isinstance(face, Face):
-            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
-        else:
-            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
-        
-        assert len(new_face_names) == 3, "Expected 3 new faces names on face grow command, but got {}!".format(len(new_face_names))
-
-        v0, v1, v2 = [self.vertices[i] for i in face.vertices]
-
-        length = face.measure_distances(self.vertices).mean()
-
-        # Calculate apex point (normal direction + offset)
-        normal = np.cross(v1 - v0, v2 - v0)
-        normal = normal / np.linalg.norm(normal) * (length * math.sqrt(2/3))
-        apex = (v0 + v1 + v2) / 3 + normal 
-
-        # Build new faces
-        self.add_face(new_face_names[0], [v0, v1, apex])
-        self.add_face(new_face_names[1], [v1, v2, apex])
-        self.add_face(new_face_names[2], [v0, apex, v2])
 
     def rename_face(self, face, new_name: str):
         """
@@ -236,7 +214,7 @@ class TetrahedralMesh:
         # Requeue this face
         self.queue.append(face)
 
-    def split_face(self, face, new_names: list):
+    def split_face(self, face: Face, new_names: list):
         """
         Split a face into four smaller faces! Specify the face by either the face object itself, or its index in self.faces.
 
@@ -285,20 +263,16 @@ class TetrahedralMesh:
             folder (str): Optionally, a folder to put the .stl in.      
         """
 
-        faces = self.collect_faces()
-        vertices = self.collect_vertices()
+        my_trimesh = self.get_trimesh()
 
-        my_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-        for i, f in enumerate(faces):
-            for j in range(3):
-                my_mesh.vectors[i][j] = vertices[f[j],:]
+        current_file_path = Path(__file__).resolve().parent
 
         if folder is None:
-            my_mesh.save(os.path.join("meshes", filename + ".stl"))
+            my_trimesh.export(os.path.join(current_file_path, "meshes", filename + ".stl"))
         else:
-            directory_path = Path(os.path.join(Path.cwd(), "meshes", folder))
+            directory_path = Path(current_file_path, "meshes", folder)
             directory_path.mkdir(parents=True, exist_ok=True)
-            my_mesh.save(os.path.join(directory_path, filename + ".stl"))
+            my_trimesh.export(os.path.join(directory_path, filename + ".stl"))
 
     def collect_vertices(self) -> np.ndarray:
         """
@@ -365,26 +339,17 @@ class TetrahedralMesh:
             self.split_face(next_face, rhs)
         else:
             raise ValueError("Unexpected operation {} in rule.".format(operation))
+
+
+    def get_trimesh(self) -> trimesh.Trimesh:
+        """
+        Gets this mesh as a Trimesh object.
         
-    def get_volume(self) -> float:
-        """
-        Gets the volume of the mesh.
-
         Returns:
-            float: The volume of the mesh.
+            trimesh.Trimesh: This mesh as a Trimesh object.
         """
-        faces = self.collect_faces()
-        vertices = self.collect_vertices()
+        return trimesh.Trimesh(vertices=self.collect_vertices(), faces=self.collect_faces(), process=False, validate=False)
 
-        my_mesh = mesh.Mesh(np.zeros(faces.shape[0], dtype=mesh.Mesh.dtype))
-        for i, f in enumerate(faces):
-            for j in range(3):
-                my_mesh.vectors[i][j] = vertices[f[j],:]
-
-        volume, cog, inertia = my_mesh.get_mass_properties()
-
-        return volume
-    
     def get_num_faces(self) -> int:
         """
         Get the number of faces in the mesh/
@@ -397,14 +362,108 @@ class TetrahedralMesh:
     
     def out_there_score(self) -> float:
         """
-        Sums the total coordinates of all the vertices.
+        Finds the average distance of each plane to the origin, squares them, and sums them all up.
 
         Returns:
-            float: The total coordinates of all the vertices.
+            float: Sum of squares of distances from each place to the origin.
         """
 
-        return sum(sum(self.vertices))
+        to_return = 0
+
+        for face in self.faces:
+            v0, v1, v2 = [self.vertices[i] for i in face.vertices]
+
+            avg = (v0 + v1 + v2) / 3
+            v0, v1, v2 = avg
+            dist = math.sqrt(v0*v0 + v1*v1 + v2*v2)
+            to_return += dist*dist
+
+        for rule in self.grammar.rules.values():
+            if rule.operation == "divide":
+                to_return += to_return * 0.5
+
+        return to_return * len(self.faces)
     
+    def dist_to_point(self, point):
+        """
+        Returns the distance between a given point and the closest point in the mesh.
+        
+        Parameters:
+            point (np.ndarray): The given point represented by a np.ndarray of len 3. 
+
+        Returns:
+            float: The distance between the given point and the closest point in the mesh.
+        """
+
+        smallest_dist = math.inf
+
+        for v in self.vertices:
+            dist = np.linalg.norm(v - point)
+
+            if dist < smallest_dist:
+                smallest_dist = dist
+
+        return smallest_dist
+    
+    def grow_face(self, face: Face, new_face_names: list[str]):
+        """
+        Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
+        Also computes whether the grow will intersect the mesh, in which case the face is not
+        grown and it is permanently deqeued.
+        
+        Parameters:
+            face (Face): Face to grow. Can either be the face object itself or the index in self.faces.
+            new_face_names (list[str]): Names of the new faces. Length should be 3.
+
+        Returns:
+            bool: True if face was successfully grown, False otherwise.
+        """
+
+        # Parse args
+        if isinstance(face, int):
+            if face > -1 and face < len(self.faces):
+                face = self.faces[face]
+            else:
+                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
+        elif isinstance(face, Face):
+            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
+        else:
+            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
+        
+        assert len(new_face_names) == 3, "Expected 3 new faces names on face grow command, but got {}!".format(len(new_face_names))
+
+        v0, v1, v2 = [self.vertices[i] for i in face.vertices]
+
+        length = face.measure_distances(self.vertices).mean()
+
+        # Calculate apex point (normal direction + offset)
+        normal = np.cross(v1 - v0, v2 - v0)
+        normal = normal / np.linalg.norm(normal) * (length * math.sqrt(2/3))
+        apex = (v0 + v1 + v2) / 3 + normal
+        
+        # Check any collision between new tetra and mesh using trimesh
+        """
+        my_mesh = self.get_trimesh()
+        manager = CollisionManager()
+        manager.add_object("my_mesh", my_mesh)
+
+        new_vertices = np.array([v0, v1, v2, apex])
+        new_tetra_mesh = trimesh.Trimesh(new_vertices, TETRA_FACES)
+        manager.add_object("tetra_mesh", new_tetra_mesh)
+
+        print(manager.min_distance_internal())
+        if manager.min_distance_internal() < -TOLEREANCE:
+            return False
+        """
+
+        # Build new faces & store tetra
+        self.add_face(new_face_names[0], [v0, v1, apex])
+        self.add_face(new_face_names[1], [v1, v2, apex])
+        self.add_face(new_face_names[2], [v0, apex, v2])
+
+        return True
+
+
 def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:
     """
     Make a simple mesh with a single tetrahedron, with faces named "A", "B", "C", "D".
@@ -420,11 +479,20 @@ def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:
     # Make symmertic triangle at origin
     my_mesh = TetrahedralMesh()
 
+    my_mesh.grow_face(0, ["A", "B", "C"])
+
+    for i in range(10):
+        print(my_mesh.grow_face(len(my_mesh.faces) - 3, ["A", "B", "C"]))
+
+        """"""
+    """
     print("Faces: {}".format(my_mesh.faces))
     print("Vertices: {}".format(my_mesh.vertices))
+    print("Tetra: {}".format(my_mesh.tetra))
     print("Edge distances by face: {}".format(my_mesh.get_edge_distances()))
+    """
 
-    my_mesh.export_to_stl(mesh_filename)
+    my_mesh.export_to_stl(mesh_filename, "test")
 
 if __name__ == "__main__":
     make_tetra()
