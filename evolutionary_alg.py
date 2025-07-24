@@ -224,6 +224,10 @@ class EvolutionRun:
                 return mesh.out_there_score()
             case "num_faces":
                 return mesh.get_num_faces()
+            case "hull_volume":
+                return mesh.get_hull()
+            case _:
+                raise ValueError("Unknown fitness function {}.".format(self.fitness_function))
 
     def sort_population(self):
         """
@@ -235,12 +239,12 @@ class EvolutionRun:
 my_run = EvolutionRun(generations=100, 
                       population_size=50, 
                       num_elites=20,
-                      iters_per_run=500, 
+                      iters_per_run=100, 
                       mutuation_rate=0.2, 
                       crossover_rate=0.5,
                       crossover_strategy="one",
-                      fitness_function="num_faces",
+                      fitness_function="hull_volume",
                       sort_reverse=True,
-                      check_collision=False)
+                      check_collision=True)
 my_run.run()
 
