@@ -36,9 +36,13 @@ class Face:
                                vertex in the associated TetrahedralMesh.vertices list. Order matters! The 
                                order of the vertices in the tuple decides which way the normal vector points.
                                Use the right hand rule!
+        n (np.ndarray): The normal vector of the plane the face lies in.
+        d (float): The translation from the origin to the plane.
     """
     label: str
     vertices: tuple[int, int, int]  # indices in TetrahedralMesh.vertices list
+    n: np.ndarray = None
+    d: float = None
 
     def measure_distances(self, vertices: list) -> np.ndarray:
         """
@@ -67,6 +71,33 @@ class Face:
         """
 
         return np.array([vertices[i] for i in self.vertices])
+    
+    def compute_plane(self, vertices: list) -> tuple:
+        """
+        Computes the normal vector and translation wrs the origin of the plane the face lies in.
+
+        Parameters:
+            vertices (list): The list of points in the mesh.
+
+        Returns:
+            tuple (np.ndarray, float): The normal vector and translation of the plane the face exists in.
+        """
+        v0, v1, v2 = self.get_coordinates(vertices)
+
+        self.n = np.cross(v1-v0, v2-v0)
+        self.d = -np.dot(self.n, v0)
+
+        return (self.n, self.d)
+    
+    def get_plane(self) -> tuple:
+        """
+        Gets the normal vector and translation wrs the origin of the plane the face lies in.
+
+        Returns:
+            tuple (np.ndarray, float): The normal vector and translation of the plane the face exists in.
+        """
+
+        return (self.n, self.d)
 
 class TetrahedralMesh:
     """
@@ -188,8 +219,9 @@ class TetrahedralMesh:
 
         # Make, add, and queue new face
         new_face = Face(name, tuple(vertices))
+        new_face.compute_plane(self.vertices) # Pre-compute face's plane for triangle intersect
         self.faces.append(new_face)
-
+        
         if enqueue:
             self.queue.append(new_face)
 
@@ -258,6 +290,85 @@ class TetrahedralMesh:
         self.add_face(new_names[1], [v05, v1, v15])
         self.add_face(new_names[2], [v05, v15, v25])
         self.add_face(new_names[3], [v25, v15, v2])
+
+    def grow_face(self, face, new_face_names: list[str]) -> bool:
+        """
+        Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
+        Also computes whether the grow will intersect the mesh, in which case the face is not
+        grown and it is permanently deqeued.
+        
+        Parameters:
+            face (Face): Face to grow. Can either be the face object itself or the index in self.faces.
+            new_face_names (list[str]): Names of the new faces. Length should be 3.
+
+        Returns:
+            bool: True if face was successfully grown, False otherwise.
+        """
+
+        # Parse args
+        if isinstance(face, int):
+            if face > -1 and face < len(self.faces):
+                face = self.faces[face]
+            else:
+                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
+        elif isinstance(face, Face):
+            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
+        else:
+            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
+        
+        assert len(new_face_names) == 3, "Expected 3 new faces names on face grow command, but got {}!".format(len(new_face_names))
+
+        v0, v1, v2 = face.get_coordinates(self.vertices)
+
+        length = face.measure_distances(self.vertices).mean()
+
+        # Calculate apex point (normal direction + offset)
+        normal = np.cross(v1 - v0, v2 - v0)
+        normal = normal / np.linalg.norm(normal) * (length * math.sqrt(2/3))
+        apex = (v0 + v1 + v2) / 3 + normal
+
+        face0_vertices = [v0, v1, apex]
+        face1_vertices = [v1, v2, apex]
+        face2_vertices = [v0, apex, v2]
+        
+        # Check any collision between new faces and existing faces
+        if self.check_collision:
+            for new_face_vertices in [face0_vertices, face1_vertices, face2_vertices]:
+                collides = self.check_face_intersection(np.array(new_face_vertices))
+                if collides:
+                    return False
+
+        # Build new faces & store tetra
+        self.add_face(new_face_names[0], face0_vertices)
+        self.add_face(new_face_names[1], face1_vertices)
+        self.add_face(new_face_names[2], face2_vertices)
+
+        return True
+    
+    def check_face_intersection(self, face1: list[np.ndarray]) -> bool:
+        """
+        Checks if a face intersects with the mesh.
+
+        Parameters:
+            face (np.ndarray]): Face to check, a list of length 3 representing points which each are
+                                            a numpy array of length 3 representing 3D coordinates.
+        Returns:
+            bool: True if the faces intersect, False otherwise.
+        """
+
+        # Compute the new face's plane, pi: n * X + d
+        v0, v1, v2 = face1
+        n1 = np.cross(v1-v0, v2-v0)
+        d1 = -np.dot(n1, v0)
+
+        for face in self.faces:
+            face2 = face.get_coordinates(self.vertices)
+            n2, d2 = face.get_plane()
+
+            if triangle_intersect.intersect(face1, n1, d1, face2, n2, d2):
+                return True
+
+        return False
 
     def export_to_stl(self, filename: str, folder: str = None):
         """
@@ -345,7 +456,6 @@ class TetrahedralMesh:
         else:
             raise ValueError("Unexpected operation {} in rule.".format(operation))
 
-
     def get_trimesh(self) -> trimesh.Trimesh:
         """
         Gets this mesh as a Trimesh object.
@@ -416,79 +526,6 @@ class TetrahedralMesh:
 
         hull = ConvexHull(self.collect_vertices())
         return hull.volume
-    
-    def grow_face(self, face, new_face_names: list[str]) -> bool:
-        """
-        Grow a face by appending a new tetrahedron to the mesh with the given face as the base.
-        Also computes whether the grow will intersect the mesh, in which case the face is not
-        grown and it is permanently deqeued.
-        
-        Parameters:
-            face (Face): Face to grow. Can either be the face object itself or the index in self.faces.
-            new_face_names (list[str]): Names of the new faces. Length should be 3.
-
-        Returns:
-            bool: True if face was successfully grown, False otherwise.
-        """
-
-        # Parse args
-        if isinstance(face, int):
-            if face > -1 and face < len(self.faces):
-                face = self.faces[face]
-            else:
-                raise IndexError("Index {} out of bounds for mesh with {} faces.".format(face, len(self.faces)))
-        elif isinstance(face, Face):
-            assert face in self.faces, "Tried to grow Face {} but it doesn't exist in this mesh!".format(face)
-        else:
-            raise TypeError("Expected either a Face object or an int id, but got {}!".format(type(face)))
-        
-        assert len(new_face_names) == 3, "Expected 3 new faces names on face grow command, but got {}!".format(len(new_face_names))
-
-        v0, v1, v2 = face.get_coordinates(self.vertices)
-
-        length = face.measure_distances(self.vertices).mean()
-
-        # Calculate apex point (normal direction + offset)
-        normal = np.cross(v1 - v0, v2 - v0)
-        normal = normal / np.linalg.norm(normal) * (length * math.sqrt(2/3))
-        apex = (v0 + v1 + v2) / 3 + normal
-
-        face0_vertices = [v0, v1, apex]
-        face1_vertices = [v1, v2, apex]
-        face2_vertices = [v0, apex, v2]
-        
-        # Check any collision between new faces and existing faces
-        if self.check_collision:
-            for new_face_vertices in [face0_vertices, face1_vertices, face2_vertices]:
-                collides = self.check_face_intersection(np.array(new_face_vertices))
-                if collides:
-                    return False
-
-        # Build new faces & store tetra
-        self.add_face(new_face_names[0], face0_vertices)
-        self.add_face(new_face_names[1], face1_vertices)
-        self.add_face(new_face_names[2], face2_vertices)
-
-        return True
-    
-    def check_face_intersection(self, face1: list[np.ndarray]) -> bool:
-        """
-        Checks if a face intersects with the mesh.
-
-        Parameters:
-            face (np.ndarray]): Face to check, a list of length 3 representing points which each are
-                                            a numpy array of length 3 representing 3D coordinates.
-        Returns:
-            bool: True if the faces intersect, False otherwise.
-        """
-
-        for face in self.faces:
-            face2 = face.get_coordinates(self.vertices)
-
-            if triangle_intersect.intersect(face1, face2):
-                return True
-
-        return False
 
 
 def make_tetra(mesh_filename: str = DEFAULT_MESH_FILENAME) -> TetrahedralMesh:

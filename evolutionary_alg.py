@@ -236,15 +236,16 @@ class EvolutionRun:
 
         self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=self.sort_reverse)
 
-my_run = EvolutionRun(generations=100, 
-                      population_size=50, 
-                      num_elites=20,
-                      iters_per_run=100, 
-                      mutuation_rate=0.2, 
-                      crossover_rate=0.5,
-                      crossover_strategy="one",
-                      fitness_function="hull_volume",
-                      sort_reverse=True,
-                      check_collision=True)
-my_run.run()
+if __name__ == "__main__":
+    my_run = EvolutionRun(generations=50, 
+                        population_size=50, 
+                        num_elites=20,
+                        iters_per_run=250, 
+                        mutuation_rate=0.2, 
+                        crossover_rate=0.5,
+                        crossover_strategy="one",
+                        fitness_function="hull_volume",
+                        sort_reverse=True,
+                        check_collision=True)
+    my_run.run()
 

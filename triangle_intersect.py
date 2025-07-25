@@ -22,7 +22,7 @@ TOLERANCE = 1e-12
 
 def test_collision():
     """
-    Test the collision engine. Change x_trans, etc. and angled to get different situations to test.
+    Test the collision engine for debugging purposes. Change x_trans, etc. and angled to get different situations to test.
     Also exports the triangles to ./meshes/test/triangles.stl to visualize.
     """
 
@@ -145,7 +145,7 @@ def compute_line_interval(t: np.ndarray, dv: np.ndarray, D: np.ndarray) -> tuple
     negative_indices = np.where(dv < 0)[0]
 
     # Also WOLOG we will relabel v's s.t. v0 and v2 lie on one side of pi2, and v1 on the other side.
-    # dv lets us know which side of the plane the v's are on.
+    # dv lets us know which side of the plane the v's are on via the sign of each v.
 
     if len(positive_indices) > len(negative_indices):
         v0 = t[positive_indices[0]]
@@ -176,39 +176,27 @@ def compute_line_interval(t: np.ndarray, dv: np.ndarray, D: np.ndarray) -> tuple
 
     return (start, end)
 
-def intersect(t1: np.ndarray, t2: np.ndarray) -> bool:
+def intersect(t1: np.ndarray, n1: np.ndarray, d1: float, 
+              t2: np.ndarray, n2: np.ndarray, d2: float) -> bool:
     """
     Computes if two triangles in 3D space inersect using Tomas Möller's "Fast Triangle-Triangle Intersection Test". 
     
     Parameters:
         t1 (np.ndarray): np.ndarry of shape (3, 3) with each row representing a point in a triangle.
+        n1 (np.ndarray): Normal vector of t1's plane.
+        d1 (float): Translation of t1's plane w. r. t. origin.
         t2 (np.ndarray): np.ndarry of shape (3, 3) with each row representing a point in a triangle.
-        verbose (bool): Whether to print which situation the engine decided.
-
+        n2 (np.ndarray): Normal vector of t1's plane.
+        d2 (float): Translation of t1's plane w. r. t. origin.
     Returns:
         bool: True if the triangles intersect, False otherwise.
     """
 
-    # Unpack vertices
-    v1_0, v1_1, v1_2 = t1
-    v2_0, v2_1, v2_2 = t2
+    # First, we compute the signed distance from t1's points to t2's plane, pi2 and vice versa
 
-    # The first step is to compute the planes the triangles lie on pi1 for t1 and pi2 for t2.
-
-    # Find plane equation of t2, pi2 : n2 * X + d2
-    # where X is any point on the plane
-    n2 = np.cross(v2_1-v2_0, v2_2-v2_0)
-    d2 = -np.dot(n2, v2_0)
-
-    # Next, we compute the signed distance from t1's points to pi2 and vice versa
-
-    # Compute signed distances between vertices of t1 to pi2 mutiplied by constance (n2*n2)
+    # Compute signed distances between vertices of t1 to pi2 mutiplied by constant (n2*n2)
     # By subbing in vertices of t1 into plane equation
     d_v1 = np.dot(t1, n2) + d2
-        
-    # Repeat the same for t2 and pi1
-    n1 = np.cross(v1_1-v1_0, v1_2-v1_0)
-    d1 = -np.dot(n1, v1_0)
     d_v2 = np.dot(t2, n1) + d1
 
     # Now d_v1 and d_v2 tell us the disances from each triangle's vertices to the other's triangle's plane.
@@ -231,9 +219,10 @@ def intersect(t1: np.ndarray, t2: np.ndarray) -> bool:
         # If a d_v has all the same sign (inlucing zero since we consider points open) 
         # one triangle's vertices are all on one side of the other's plane. 
         # Then they can't intersect and we are done, saving a lot of work.
+
         return False
     else:
-        # Triangles are not coplanar and not on one side of eachoher's plane.  
+        # Triangles are not coplanar and not on one side of eachother's plane.  
         # Then there is a line containing both triangles.
         # We want to compute the projection of v's onto that line and ultimately find the interval of t1 and t2 on that line.
         # If the intervals overlap then the triangles intersect.
