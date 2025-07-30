@@ -142,8 +142,7 @@ evogym_venv
 data
 meshes
 models
-
-latest.csv
+latest_run
 
 # backup dir
 backup_*
