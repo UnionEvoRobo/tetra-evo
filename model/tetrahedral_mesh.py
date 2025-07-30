@@ -6,16 +6,17 @@ July 7th, 2025
 """
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import trimesh
 import numpy as np
 from scipy.spatial import ConvexHull
-import random
 import os
 from collections import deque
 from pathlib import Path
-from grammar import Grammar
-import triangle_intersect
+from model.grammar import Grammar
+import model.triangle_intersect as triangle_intersect
+
+OPERATIONS = {"relabel": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
 
 DEFAULT_MESH_FILENAME = "my_mesh"
 TOLEREANCE = 1e-10 # Floating point tolerance for collisions
@@ -386,7 +387,7 @@ class TetrahedralMesh:
         if folder is None:
             my_trimesh.export(os.path.join(current_file_path, "meshes", filename + ".stl"))
         else:
-            directory_path = Path(current_file_path, "meshes", folder)
+            directory_path = Path(folder)
             directory_path.mkdir(parents=True, exist_ok=True)
             my_trimesh.export(os.path.join(directory_path, filename + ".stl"))
 
@@ -480,7 +481,7 @@ class TetrahedralMesh:
         Finds the average distance of each plane to the origin, squares them, and sums them all up.
 
         Returns:
-            float: Sum of squares of distances from each planee to the origin.
+            float: Sum of squares of distances from each plane to the origin.
         """
 
         to_return = 0

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 DIR = "meshes"
-TIMESTAMP = "2025-07-24_14-47-33"
+TIMESTAMP = "2025-07-25_16-33-07"
 
 def plot(dir=DIR, timestamp=TIMESTAMP):
     """

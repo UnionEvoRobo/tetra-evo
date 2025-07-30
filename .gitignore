@@ -140,10 +140,8 @@ evogym_venv
 .env
 
 data
-videos
-action_log
-levels_log
 meshes
+models
 
 latest.csv
 

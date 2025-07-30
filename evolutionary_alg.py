@@ -6,6 +6,7 @@ July 14th, 2025
 """
 
 import random
+import sys
 import time
 import datetime as dt
 from datetime import datetime
@@ -14,16 +15,44 @@ import os
 import json
 import pandas as pd
 import numpy as np
-from grammar import Grammar
-from tetrahedral_mesh import TetrahedralMesh
-
-ALPHABET = ["A", "B", "C", "D", "E", "F", "G"]
-OPERATIONS = {"relabel": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
-
-POINT = [25, 0, 25]
+from model.grammar import Grammar
+from model.tetrahedral_mesh import TetrahedralMesh, OPERATIONS
+import default_args as D
 
 GENOME_INDEX = 0
 FITNESS_INDEX = 1
+
+def is_windows():
+    """
+    Checks if the operating system is Windows.
+
+    Returns:
+        bool: True if the OS is Windows, False otherwise.
+    """
+    return os.name == 'nt' or sys.platform.startswith('win')
+
+def set_symlink(symlink_path: str, target_path: str):
+    """
+    Set a symlink.
+
+    Parameters:
+        symlink (str): Path of the symlink.
+        target_path (str): Path of the target.
+    """
+
+    try:
+        if os.path.islink(symlink_path) or os.path.exists(symlink_path):
+            os.remove(symlink_path)
+
+        if is_windows():
+            os.symlink(target_path, symlink_path)
+        else:
+            os.system(f'ln -s "{target_path}" "{symlink_path}"')
+
+    except Exception as e:
+        print(
+            f"Warning: could not create symlink to latest_genome folder: {e}"
+        )
 
 class EvolutionRun:
     """
@@ -31,7 +60,8 @@ class EvolutionRun:
     """
 
     def __init__(self, generations: int, population_size: int, num_elites: int, iters_per_run: int, mutuation_rate: float, 
-                 crossover_rate: float, crossover_strategy: str, fitness_function: str, sort_reverse: bool, check_collision: bool):
+                 crossover_rate: float, crossover_strategy: str, fitness_function: str, sort_reverse: bool, check_collision: bool,
+                 export_generations: bool, export_stl: bool, alphabet: list[str], run_name: str = None, data_path: str = None):
         """
         Returns an EvolutionRun instance.
 
@@ -46,8 +76,14 @@ class EvolutionRun:
             fitness_function (str): What fitness function to use.
             sort_reverse (bool): Whether to sort solutions in descending order. Should be True if higher fitness is better.
             check_collision (bool): Whether the mesh should block grow commands that overlap with the mesh.
+            export_generations (bool): Whether to export a .csv file representing each generation.
+            export_stl (bool): Whether to export the best individual of every generation as an .stl file.
+            alphabet (list[str]): Possible labels for faces.
+            run_name (str): Folder name to save run data under. Will save as timestamp otherwise.
+            data_dir (str): Path to store run data in. Expects path-like string, defaults to /runs.
         """
 
+        # Args
         self.generations = generations
         self.population_size = population_size
         self.num_elites = num_elites
@@ -58,43 +94,99 @@ class EvolutionRun:
         self.fitness_function = fitness_function
         self.sort_reverse = sort_reverse
         self.check_collision = check_collision
+        self.export_generations = export_generations
+        self.export_stl = export_stl
+        self.alphabet = alphabet
+        self.run_name = run_name
 
+        # Book-keeping
         self.best_fitness = []
+        self.best_individuals = []
 
+        # Setup
+        self.this_dir = Path(Path(__file__).resolve().parent)
         self.new_per_gen = self.population_size - self.num_elites # Num of new individuals per gen
-
         self.current_gen = 0
         self.start_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-
-        # Initialize random population, a list of (genome, fitness) pairs
+        self.data_path = self.resolve_data_path(run_name, data_path)
         self.population: list[Grammar, float] = []
-        for i in range(self.population_size):
-            self.population.append([Grammar(ALPHABET, OPERATIONS).generate_random(), None])
+        self.export_info()
+        self.export_run()
+        set_symlink(os.path.join(self.this_dir, "latest_run"), os.path.join(self.data_path, "run.csv"))
+
+    def resolve_data_path(self, run_name: str, data_dir: str) -> Path:
+        """
+        Resolves and creates directory run data will be stored in.
+
+        Parameters:
+            run_name (str): Name of the run, to be the top-level folder name.
+            data_dir (str): Place to put the top-level data folder.
+
+        Returns:
+            Path: The new-ly created directory where data should be stored.
+        """
+
+        if data_dir is None:
+            data_path = os.path.join(self.this_dir, "runs")
+        else:
+            data_path = data_dir
+
+        if run_name is None:
+            data_path = os.path.join(data_path, self.start_time)
+        else:
+            data_path = os.path.join(data_path, self.run_name)
+
+        Path(data_path).mkdir(parents=True, exist_ok=True)
+
+        return data_path
 
     def run(self):
         """
         Run the evolutionary algorithm.
         """
 
-        self.export_info()
-
-        # Compute time
         self.last_gen_clock = time.time()
+
+        # Initialize random population, a list of (genome, fitness) pairs
+        for i in range(self.population_size):
+            self.population.append([Grammar(self.alphabet, OPERATIONS).generate_random(), None])
 
         while self.current_gen < self.generations:
 
-            # Get fitnesses
+            ### Get & sort fitnesses
+
             for i, individual in enumerate(self.population):
                 genome = individual[GENOME_INDEX]
                 self.population[i][FITNESS_INDEX] = self.get_fitness(genome) 
             
             self.sort_population() # Sort population
 
+            ### Housekeeping
+
+            # Export generation and extract best individual
+            if self.export_generations:
+                self.export_current_population()
+
+            self.best_fitness.append(self.population[0][FITNESS_INDEX])
+            self.best_individuals.append(self.population[0][GENOME_INDEX].to_dict())
+
             # Print fitnesses
             print("")
             print("Generation {}".format(self.current_gen))
             print("Fitnesses:", [sublist[FITNESS_INDEX] for sublist in self.population])
-            self.best_fitness.append(self.population[0][FITNESS_INDEX])
+
+            # Print grammar
+            print(self.population[0][GENOME_INDEX])
+
+            # Export best .stl
+            if self.export_stl:
+                best_mesh = TetrahedralMesh(self.population[0][GENOME_INDEX], self.check_collision)
+                for i in range(self.iters_per_run):
+                    best_mesh.apply_rule()
+                best_mesh.export_to_stl("gen{}_score{}".format(str(self.current_gen), self.population[0][FITNESS_INDEX]),
+                                        self.data_path)
+
+            ### Make next generation
 
             del self.population[-(self.new_per_gen):] # Delete all but the elites
 
@@ -105,101 +197,49 @@ class EvolutionRun:
 
             new_individuals = []
 
-            # Fill rest of population !FIXME num_elites must be even or population will grow 
+            # Fill rest of population
             while len(new_individuals) < self.new_per_gen:
                 # Pick one parent
                 p1 = self.population[np.random.choice(len(self.population), p=selection_probs)][GENOME_INDEX].copy()
-                p2 = p1
-
-                # Pick a different parent
-                while p1 is p2:
-                    p2 = self.population[np.random.choice(len(self.population), p=selection_probs)][GENOME_INDEX].copy()
-
-                # Choose selected crossover strategy
-                if random.random() < self.crossover_rate:
-                    match self.crossover_strategy:
-                        case "one":
-                            p1.crossover(p2)
-                        case "two":
-                            p1.two_point_crossover(p2)
-                        case "uniform":
-                            p1.uniform_crossover(p2)
-                        case _:
-                            raise ValueError('Unexpected crossover strategy {}. Try "one", "two", or "uniform"'.
-                                            format(self.crossover_strategy))
                 
-                # Mutate
-                p1.regenerate_random(self.mutation_rate)
-                p2.regenerate_random(self.mutation_rate)
+                if len(new_individuals) < self.new_per_gen - 1: # If we need more than 1 new individual, pick another and maybe crossover
+                    p2 = p1
 
+                    # Pick a different parent
+                    while p1 is p2:
+                        p2 = self.population[np.random.choice(len(self.population), p=selection_probs)][GENOME_INDEX].copy()
+
+                    # Choose selected crossover strategy
+                    if random.random() < self.crossover_rate:
+                        match self.crossover_strategy:
+                            case "one":
+                                p1.crossover(p2)
+                            case "two":
+                                p1.two_point_crossover(p2)
+                            case "uniform":
+                                p1.uniform_crossover(p2)
+                            case _:
+                                raise ValueError('Unexpected crossover strategy {}. Try "one", "two", or "uniform"'.
+                                                format(self.crossover_strategy))
+                    
+                    p2.regenerate_random(self.mutation_rate) # Mutate
+                    new_individuals.append([p2, None])
+                
+                p1.regenerate_random(self.mutation_rate)
                 new_individuals.append([p1, None])
-                new_individuals.append([p2, None])
         
             self.population.extend(new_individuals)
             self.current_gen += 1
 
-            # Print grammar
-            print(self.population[0][GENOME_INDEX])
+            ### Time estimate
 
-            # Export .stl
-            best_mesh = TetrahedralMesh(self.population[0][GENOME_INDEX], self.check_collision)
-            for i in range(self.iters_per_run):
-                best_mesh.apply_rule()
-            best_mesh.export_to_stl("gen{}_score{}".format(str(self.current_gen).zfill(4), self.population[0][FITNESS_INDEX]),
-                                    self.start_time)
-
-            # Time estimate
             last_gen_time = time.time() - self.last_gen_clock
             self.last_gen_clock = time.time()
             gens_remaining = self.generations - self.current_gen
             print("Last gen time: {} | Gens remaining: {} | Time est: {}".
                   format(dt.timedelta(seconds=int(last_gen_time)), gens_remaining, dt.timedelta(seconds=int(last_gen_time* gens_remaining))))
 
-        self.export_fitness_log()
-
-    def export_fitness_log(self):
-        """
-        Exports the fitnesses.csv file of the best fitness per generation.
-        """
-
-        df = pd.DataFrame({
-            "gen": range(len(self.best_fitness)),
-            "best_fitness": self.best_fitness
-        })
-
-        current_file_path = Path(__file__).resolve().parent
-        filepath = os.path.join(current_file_path, "meshes", self.start_time, "fitnesses.csv")
-
-        df.to_csv(filepath, index=False)
-
-    def export_info(self):
-        """
-        Exports info.json.
-        """
-
-        info = {
-            "time": self.start_time,
-            "generations": self.generations,
-            "population_size": self.population_size, 
-            "num_elites": self.num_elites,
-            "iters_per_run": self.iters_per_run,
-            "mutation_rate": self.mutation_rate,
-            "crossover_rate": self.crossover_rate,
-            "crossover_strategy": self.crossover_strategy,
-            "fitness_function": self.fitness_function,
-            "sort_reverse": self.sort_reverse,
-            "check_collsion": self.check_collision
-        }
-
-        current_file_path = Path(__file__).resolve().parent
-
-        directory_path = Path(current_file_path, "meshes", self.start_time,)
-        directory_path.mkdir(parents=True, exist_ok=True)
-
-        filepath = os.path.join(directory_path, "info.json")
-
-        with open(filepath, 'w') as f:
-            json.dump(info, f, indent=4)
+            self.export_run()
 
     def get_fitness(self, genome: Grammar) -> float:
         """
@@ -219,7 +259,7 @@ class EvolutionRun:
 
         match self.fitness_function:
             case "dist_to_point":
-                return mesh.dist_to_point(POINT)
+                return mesh.dist_to_point(D.POINT)
             case "out_there_score":
                 return mesh.out_there_score()
             case "num_faces":
@@ -236,16 +276,134 @@ class EvolutionRun:
 
         self.population.sort(key = lambda x: x[FITNESS_INDEX], reverse=self.sort_reverse)
 
-if __name__ == "__main__":
-    my_run = EvolutionRun(generations=50, 
-                        population_size=50, 
-                        num_elites=20,
-                        iters_per_run=250, 
-                        mutuation_rate=0.2, 
-                        crossover_rate=0.5,
-                        crossover_strategy="one",
-                        fitness_function="hull_volume",
-                        sort_reverse=True,
-                        check_collision=True)
-    my_run.run()
+    def export_current_population(self):
+        """
+        Exports current self.population as a .csv file.
+        """
 
+        # Init columns id, fitness, num_rules, lhs0, operation0, rhs0, lhs1, ...
+        columns = ["id", "fitness", "num_rules"]
+        columns += [item + str(i) for i in range(len(self.alphabet)) for item in ['lhs', 'operation', 'rhs']]
+        rows = []
+
+        for id, individual in enumerate(self.population):
+            fitness = individual[FITNESS_INDEX]
+            grammar = individual[GENOME_INDEX]
+            row = {"id": id, "fitness": fitness, "num_rules": len(self.alphabet)}
+            row.update(grammar.to_dict())
+            rows.append(row)
+
+        file_path = os.path.join(self.data_path, "gen" + str(self.current_gen) + ".csv")
+
+        pd.DataFrame(rows, columns=columns).to_csv(file_path, index=False)
+    
+    def export_run(self):
+        """
+        Exports the run.csv file of the best fitness and grammars per generation.
+        """
+
+        columns = ["generation", "fitness", "num_rules"]
+        columns += [item + str(i) for i in range(len(self.alphabet)) for item in ['lhs', 'operation', 'rhs']]
+        rows = []
+
+        num_rules = len(self.alphabet)
+
+        for generation, individual in enumerate(self.best_individuals):
+            row = {"generation": generation, "fitness": self.best_fitness[generation], "num_rules": num_rules}
+            row.update(individual)
+            rows.append(row)
+
+        file_path = os.path.join(self.data_path, "run.csv")
+        pd.DataFrame(rows, columns=columns).to_csv(file_path, index=False)
+
+    def export_info(self):
+        """
+        Exports info.json.
+        """
+
+        info = {
+            "time": self.start_time,
+            "generations": self.generations,
+            "population_size": self.population_size, 
+            "num_elites": self.num_elites,
+            "iters_per_run": self.iters_per_run,
+            "mutation_rate": self.mutation_rate,
+            "crossover_rate": self.crossover_rate,
+            "crossover_strategy": self.crossover_strategy,
+            "fitness_function": self.fitness_function,
+            "sort_reverse": self.sort_reverse,
+            "check_collsion": self.check_collision,
+            "alphabet": self.alphabet
+        }
+
+        filepath = os.path.join(self.data_path, "info.json")
+
+        with open(filepath, 'w') as f:
+            json.dump(info, f, indent=4)
+        
+
+def run_batch(runs: int, batch_name: str = None, batch_path: str = None):
+    """
+    Runs a batch of EvolutionRun Experiments.
+
+    Parameters:
+        runs (int): Number of runs to perform.
+        batch_name (str): Name of run. Defaults to timestamp.
+        batch_path (str): Where to save run data. Defaults to /batches/.
+    """
+
+    start_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+
+    if batch_path is None:
+        this_dir = Path(Path(__file__).resolve().parent)
+        data_path = os.path.join(this_dir, "batches")
+    else:
+        data_path = batch_path
+
+    if batch_name is None:
+        data_path = os.path.join(data_path, start_time)
+    else:
+        data_path = os.path.join(data_path, batch_name)
+
+    Path(data_path).mkdir(parents=True, exist_ok=True)
+
+    for i in range(runs):
+        run_name = "run" + str(i)
+        my_run = EvolutionRun(generations=D.GENERATIONS, 
+                            population_size=D.POPULATION_SIZE, 
+                            num_elites=D.NUM_ELITES,
+                            iters_per_run=D.ITERS_PER_RUN, 
+                            mutuation_rate=D.MUTUATION_RATE, 
+                            crossover_rate=D.CROSSOVER_RATE,
+                            crossover_strategy=D.CROSSOVER_STRATEGY,
+                            fitness_function=D.FITNESS_FUNCTION,
+                            sort_reverse=D.SORT_REVERSE,
+                            check_collision=D.CHECK_COLLISION,
+                            export_generations=D.EXPORT_GENERATIONS,
+                            export_stl=D.EXPORT_STL,
+                            alphabet=D.ALPHABET,
+                            run_name=run_name,
+                            data_path=data_path)
+        my_run.run()
+        del my_run
+
+if __name__ == "__main__":
+    if D.RUN_BATCH:
+        run_batch(D.NUM_RUNS, D.BATCH_NAME, D.BATCH_PATH)
+    else:
+        my_run = EvolutionRun(generations=D.GENERATIONS, 
+                            population_size=D.POPULATION_SIZE, 
+                            num_elites=D.NUM_ELITES,
+                            iters_per_run=D.ITERS_PER_RUN, 
+                            mutuation_rate=D.MUTUATION_RATE, 
+                            crossover_rate=D.CROSSOVER_RATE,
+                            crossover_strategy=D.CROSSOVER_STRATEGY,
+                            fitness_function=D.FITNESS_FUNCTION,
+                            sort_reverse=D.SORT_REVERSE,
+                            check_collision=D.CHECK_COLLISION,
+                            export_generations=D.EXPORT_GENERATIONS,
+                            export_stl=D.EXPORT_STL,
+                            alphabet=D.ALPHABET,
+                            run_name=D.RUN_NAME,
+                            data_path=D.DATA_PATH)
+        my_run.run()

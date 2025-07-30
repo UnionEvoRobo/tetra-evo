@@ -28,7 +28,7 @@ class Grammar:
     A collection of Rules.
     """
 
-    def __init__(self, alphabet: list, operations: dict[str, int]):
+    def __init__(self, alphabet: list = None, operations: dict[str, int] = None):
         """
         Initialize an empty grammar.
 
@@ -53,6 +53,18 @@ class Grammar:
         """
         new_rule = Rule(func, rhs)
         self.rules[lhs] = new_rule
+
+    def add_from_dict(self, new_rules: dict):
+        """
+        Adds new rules from a dict. Expects a dict in the form of {"lhs0": A, "operation0": grow, "rhs0":BCD, lhs1: ...}
+        """
+
+        for i in range(len(new_rules)):
+            if "lhs" + str(i) in new_rules.keys():
+                rhs = list(new_rules["rhs" + str(i)])
+                self.add_rule(new_rules["lhs" + str(i)], new_rules["operation" + str(i)], rhs)
+            else:
+                break
 
     def clear(self):
         """
@@ -218,6 +230,21 @@ class Grammar:
             new_grammar.add_rule(lhs[:], rule.operation[:], copy.deepcopy(rule.rhs))
 
         return new_grammar
+    
+    def to_dict(self):
+        """
+        Returns a dict representation of the Grammar in the form of {lhs0:"A", operation0:"grow", rhs0:"BCD", lhs1:...}
+
+        Returns: A dict representation of the Grammar.
+        """
+
+        to_return = {}
+        for i, (lhs, rule) in enumerate(self.rules.items()):
+            to_return["lhs" + str(i)] = lhs
+            to_return["operation" + str(i)] = rule.operation
+            to_return["rhs" + str(i)] = ''.join(rule.rhs) # Join rhs list into str
+
+        return to_return
     
     def __str__(self):
         """

@@ -1,59 +1,89 @@
 """
-Build a TetrahedralMesh by applying a Grammar.
+Grow and display and save a mesh using a Grammar from a saved .csv file.
 
-By Thomas Breimer
-July 9th, 2025
+Author: Thomas Breimer
+July 28th, 2025
 """
 
-from grammar import Grammar
-from tetrahedral_mesh import TetrahedralMesh
+import os
+from pathlib import Path
+import pandas as pd
+import trimesh
+from model.grammar import Grammar
+from model.tetrahedral_mesh import TetrahedralMesh
 
-ITERS = 1900
-FILENAME = "my_mesh"
+FILEPATH = "runs/2025-07-28_14-09-23/gen0.csv"
+ID = 0 # genome id in csv file or generation if looking at a run.csv file
+SHOW_MESH = True # Whether to display the mesh after it is saved.
 
-ALPHABET = ["A", "B", "C", "D", "E", "F", "G"] # Labels
-OPERATIONS = {"relabel": 1, "grow": 3, "divide": 4} # Possible operations with number of rhs labels.
+EXPORT_FILEPATH = "meshes" # Export filepath
+EXPORT_FILENAME = "grow_mesh_test" # Export filename
 
-def make_example_grammar() -> Grammar:
+ITERS = 10
+CHECK_COLLISION = True
+
+MY_PATH = Path(__file__).resolve().parent
+
+def read_csv(filepath: Path, id: int) -> Grammar:
     """
-    Generate an example grammar.
-    Ruleset by Dr. John Rieffel. 
+    Reads a .csv file containing Grammars and returns a Grammar object.
+
+    Parameters:
+        filepath (Path): Path of the .csv file.
+        id (int): The id or generation number of the grammar to read.
 
     Returns:
-        Grammar: A basic grammar.
+        Grammar: The Grammar object specified.
     """
 
-    grammar = Grammar(ALPHABET, OPERATIONS)
+    df = pd.read_csv(os.path.join(MY_PATH, filepath))
 
-    grammar.add_rule("A", "grow", ["D", "B", "F"])
-    grammar.add_rule("B", "grow", ["A", "D", "F"])
-    grammar.add_rule("C", "grow", ["E", "D", "F"])
-    grammar.add_rule("D", "relabel", ["D"])
-    grammar.add_rule("E", "grow", ["D", "C", "F"])
-    grammar.add_rule("F", "divide", ["D", "D", "D", "G"])
-    grammar.add_rule("G", "grow", ["D", "G", "D"])
+    if "id" in df.columns:
+        row = df[df['id'] == id]
+    elif "generation" in df.columns:
+        row = df[df['generation'] == id]
+    else:
+        raise ValueError("Expected .csv file {} to have an 'id' or 'generations' column, but it didn't have either!".format(filepath))
+    
+    grammar = Grammar()
+    grammar.add_from_dict(row.iloc[0].to_dict())
 
     return grammar
 
-def grow_mesh(grammar: Grammar, iters: int, filename: str):
+def apply_rules(grammar: Grammar, iters: int, check_collision: bool) -> TetrahedralMesh:
     """
-    Grows a mesh using a grammar. Will be saved in the meshes directory.
+    Builds a mesh by applying rules from a grammar.
 
     Parameters:
-        grammar (Grammar): Grammar to use.
-        iters (int): Number of times to apply a rule.
-        filename (str): Filename of .stl file to save.
+        grammar (Grammar): A Grammar object to follow to generate the mesh.
+        iters (int): The number of Grammar productions to perform.
+
+    Returns:
+        TetrahedralMesh: A grown tetra mesh.
     """
 
-    grammar = make_example_grammar()
-    mesh = TetrahedralMesh(grammar)
+    mesh = TetrahedralMesh(grammar, check_collision)
 
     for i in range(iters):
-        #print("step {} ---------------------------------------".format(i))
         mesh.apply_rule()
-        #mesh.export_to_stl(filename + str(i).zfill(3))
 
-    mesh.export_to_stl(filename + str(i))
-        
+    return mesh
+
+def grow_mesh():
+    """
+    Grow a mesh.
+    """
+
+    grammar = read_csv(filepath=FILEPATH, id=ID)
+    mesh = apply_rules(grammar, ITERS, CHECK_COLLISION)
+
+    mesh.export_to_stl(EXPORT_FILENAME, os.path.join(MY_PATH, EXPORT_FILEPATH))
+
+    if SHOW_MESH:
+        trimesh.load_mesh(os.path.join(MY_PATH, EXPORT_FILEPATH, EXPORT_FILENAME + ".stl")).show()
+
 if __name__ == "__main__":
-    grow_mesh(make_example_grammar(), ITERS, FILENAME)
+    grow_mesh()
+
+
+
