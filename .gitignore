@@ -143,6 +143,8 @@ data
 meshes
 models
 latest_run
+runs
+batches
 
 # backup dir
 backup_*

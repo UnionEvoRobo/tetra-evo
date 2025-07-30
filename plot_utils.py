@@ -12,22 +12,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 
-DIR = "meshes"
-TIMESTAMP = "2025-07-25_16-33-07"
 
-def plot(dir=DIR, timestamp=TIMESTAMP):
+def single_run(path):
     """
     Plot fitness over generations given an output.csv.
     """
-
-    current_file_path = Path(__file__).resolve().parent
-    path = os.path.join(current_file_path, dir, timestamp, "fitnesses.csv")
-
     df = pd.read_csv(path)
 
     plt.figure(figsize=(8, 5))
-    plt.plot(np.array(df["gen"]),
-            np.array(df["best_fitness"]),
+    plt.plot(np.array(df["generation"]),
+            np.array(df["fitness"]),
             marker='o',
             linestyle='-',
             color='b',
@@ -38,6 +32,3 @@ def plot(dir=DIR, timestamp=TIMESTAMP):
     plt.legend()
     plt.grid()
     plt.show()
-
-if __name__ == "__main__":
-    plot()
