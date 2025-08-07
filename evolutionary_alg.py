@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 import json
+import argparse
 import pandas as pd
 import numpy as np
 from model.grammar import Grammar
@@ -126,12 +127,12 @@ class EvolutionRun:
             Path: The new-ly created directory where data should be stored.
         """
 
-        if data_dir is None:
+        if data_dir is None or data_dir == "None":
             data_path = os.path.join(self.this_dir, "runs")
         else:
             data_path = data_dir
 
-        if run_name is None:
+        if run_name is None or data_dir == "None":
             data_path = os.path.join(data_path, self.start_time)
         else:
             data_path = os.path.join(data_path, self.run_name)
@@ -314,6 +315,7 @@ class EvolutionRun:
             rows.append(row)
 
         file_path = os.path.join(self.data_path, "run.csv")
+
         pd.DataFrame(rows, columns=columns).to_csv(file_path, index=False)
 
     def export_info(self):
@@ -354,13 +356,13 @@ def run_batch(runs: int, batch_name: str = None, batch_path: str = None):
 
     start_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-    if batch_path is None:
+    if batch_path is None or batch_path == "None":
         this_dir = Path(Path(__file__).resolve().parent)
         data_path = os.path.join(this_dir, "batches")
     else:
         data_path = batch_path
 
-    if batch_name is None:
+    if batch_name is None or batch_name == "None":
         data_path = os.path.join(data_path, start_time)
     else:
         data_path = os.path.join(data_path, batch_name)
@@ -373,7 +375,7 @@ def run_batch(runs: int, batch_name: str = None, batch_path: str = None):
                             population_size=D.POPULATION_SIZE, 
                             num_elites=D.NUM_ELITES,
                             iters_per_run=D.ITERS_PER_RUN, 
-                            mutuation_rate=D.MUTUATION_RATE, 
+                            mutuation_rate=D.MUTATION_RATE, 
                             crossover_rate=D.CROSSOVER_RATE,
                             crossover_strategy=D.CROSSOVER_STRATEGY,
                             fitness_function=D.FITNESS_FUNCTION,
@@ -388,14 +390,118 @@ def run_batch(runs: int, batch_name: str = None, batch_path: str = None):
         del my_run
 
 if __name__ == "__main__":
-    if D.RUN_BATCH:
-        run_batch(D.NUM_RUNS, D.BATCH_NAME, D.BATCH_PATH)
-    else:
+    parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--runs',
+                        type=int,
+                        help='number of runs to do',
+                        default=D.RUNS)
+    parser.add_argument('--generations',
+                        type=int,
+                        help='number of generations to run',
+                        default=D.GENERATIONS)
+    parser.add_argument('--population_size',
+                        type=int,
+                        help='number of individuals in each generations',
+                        default=D.POPULATION_SIZE)
+    parser.add_argument('--num_elites',
+                        type=int,
+                        help='number of individuals to keep around for the next generation',
+                        default=D.NUM_ELITES)
+    parser.add_argument('--iters_per_run',
+                        type=int,
+                        help='number of production rules to follow when growing the mesh',
+                        default=D.ITERS_PER_RUN)
+    parser.add_argument('--mutation_rate',
+                        type=float,
+                        help='probability each production rule gets mutated',
+                        default=D.MUTATION_RATE)
+    parser.add_argument('--crossover_rate',
+                        type=float,
+                        help='probability new individuals created are crossed over',
+                        default=D.CROSSOVER_RATE)
+    parser.add_argument('--crossover_strategy',
+                        type=str,
+                        help='strategy to use for crossover, options: "one", "two", "uniform"',
+                        default=D.CROSSOVER_STRATEGY)
+    parser.add_argument('--fitness_function',
+                        type=str,
+                        help='fitness function, options: "dist_to_point", "out_there_score", "num_faces", "hull_volume"',
+                        default=D.FITNESS_FUNCTION)
+    parser.add_argument('--sort_reverse',
+                        default=D.SORT_REVERSE,
+                        type=str,
+                        help="whether to sort fitnesses in reverse order ('t'/'f'')")
+    parser.add_argument('--check_collision',
+                        default=D.CHECK_COLLISION,
+                        type=str,
+                        help="whether to check for face collision when building the mesh ('t'/'f')")
+    parser.add_argument('--export_generations',
+                        default=D.EXPORT_GENERATIONS,
+                        type=str,
+                        help="whether to generate a .csv file for each generation ('t'/'f')")
+    parser.add_argument('--export_stl',
+                        default=D.EXPORT_STL,
+                        type=str,
+                        help="whether to export the best mesh for each generation as an .stl file ('t'/'f')")
+    parser.add_argument('--run_name',
+                        type=str,
+                        help='name of directory to store run data in',
+                        default=D.RUN_NAME)
+    parser.add_argument('--data_path',
+                        type=str,
+                        help='path to save run data in',
+                        default=D.DATA_PATH)
+    parser.add_argument('--batch_name',
+                        type=str,
+                        help='name of directory to save runs in',
+                        default=D.BATCH_NAME)
+    parser.add_argument('--batch_path',
+                        type=str,
+                        help='path to save runs data in',
+                        default=D.BATCH_PATH)
+    args = parser.parse_args()
+
+    bool_map = {
+        "true": True,
+        "false": False,
+        "True": True,
+        "False": False,
+        "1": True,
+        "0": False,
+        "t": True,
+        "f": False,
+        "T": True,
+        "F": False,
+        True: True,
+        False: False
+    }
+
+    D.RUNS = int(args.runs)
+    D.GENERATIONS = int(args.generations)
+    D.POPULATION_SIZE = int(args.population_size)
+    D.NUM_ELITES = int(args.num_elites)
+    D.ITERS_PER_RUN = int(args.iters_per_run)
+    D.MUTATION_RATE = float(args.mutation_rate)
+    D.CROSSOVER_RATE = float(args.crossover_rate)
+    D.CROSSOVER_STRATEGY = str(args.crossover_strategy)
+    D.FITNESS_FUNCTION = str(args.fitness_function)
+    D.SORT_REVERSE = bool_map[args.sort_reverse]
+    D.CHECK_COLLISION = bool_map[args.check_collision]
+    D.EXPORT_GENERATIONS = bool_map[args.export_generations]
+    D.EXPORT_STL = bool_map[args.export_stl]
+    D.RUN_NAME = str(args.run_name)
+    D.DATA_PATH = str(args.data_path)
+    D.BATCH_PATH = str(args.batch_path)
+    D.BATCH_NAME = str(args.batch_name)
+
+    if D.RUNS > 1:
+        run_batch(D.RUNS, D.BATCH_NAME, D.BATCH_PATH)
+    elif D.RUNS == 1:
         my_run = EvolutionRun(generations=D.GENERATIONS, 
                             population_size=D.POPULATION_SIZE, 
                             num_elites=D.NUM_ELITES,
                             iters_per_run=D.ITERS_PER_RUN, 
-                            mutuation_rate=D.MUTUATION_RATE, 
+                            mutuation_rate=D.MUTATION_RATE, 
                             crossover_rate=D.CROSSOVER_RATE,
                             crossover_strategy=D.CROSSOVER_STRATEGY,
                             fitness_function=D.FITNESS_FUNCTION,
@@ -407,3 +513,5 @@ if __name__ == "__main__":
                             run_name=D.RUN_NAME,
                             data_path=D.DATA_PATH)
         my_run.run()
+    else:
+        ValueError("Specified number of runs {} is invalid.".format(args.runs))

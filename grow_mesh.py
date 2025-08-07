@@ -6,6 +6,7 @@ July 28th, 2025
 """
 
 import os
+import argparse
 from pathlib import Path
 import pandas as pd
 import trimesh
@@ -19,7 +20,7 @@ SHOW_MESH = True # Whether to display the mesh after it is saved.
 EXPORT_FILEPATH = "meshes" # Export filepath
 EXPORT_FILENAME = "grow_mesh_test" # Export filename
 
-ITERS = 10
+ITERS = 100
 CHECK_COLLISION = True
 
 MY_PATH = Path(__file__).resolve().parent
@@ -83,7 +84,59 @@ def grow_mesh():
         trimesh.load_mesh(os.path.join(MY_PATH, EXPORT_FILEPATH, EXPORT_FILENAME + ".stl")).show()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument('--filepath',
+                        type=str,
+                        help='path of .csv file to read from',
+                        default=FILEPATH)
+    parser.add_argument('--id',
+                        type=int,
+                        help='genome id in csv file or generation if looking at a run.csv file',
+                        default=ID)
+    parser.add_argument('--show_mesh',
+                        type=str,
+                        help="whether to display the mesh after it is saved ('t'/'f')",
+                        default=SHOW_MESH)
+    parser.add_argument('--export_filepath',
+                        type=str,
+                        help="where to store the mesh",
+                        default=EXPORT_FILEPATH)
+    parser.add_argument('--export_filename',
+                        type=str,
+                        help="name to store the mesh as",
+                        default=EXPORT_FILENAME)
+    parser.add_argument('--iters',
+                        type=int,
+                        help="number of production rules to use to grow the mesh",
+                        default=EXPORT_FILENAME)
+    parser.add_argument('--check_collision',
+                        type=str,
+                        help="whether to check for collision",
+                        default=EXPORT_FILENAME)
+    args = parser.parse_args()
+
+    bool_map = {
+        "true": True,
+        "false": False,
+        "True": True,
+        "False": False,
+        "1": True,
+        "0": False,
+        "t": True,
+        "f": False,
+        "T": True,
+        "F": False,
+        True: True,
+        False: False}
+    
+    FILEPATH = args.filepath
+    ID = args.id
+    SHOW_MESH = bool_map[args.show_mesh]
+
+    EXPORT_FILEPATH = args.export_filepath
+    EXPORT_FILENAME = args.export_filename
+
+    ITERS = args.iters
+    CHECK_COLLISION = bool_map[args.check_collision]
+        
     grow_mesh()
-
-
-
