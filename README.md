@@ -1,6 +1,6 @@
 # tetra-evo
 
-This framework can generate 3D tetrahedral meshes using grammar-like production rules which are derived using an evolutionary algorithm. See [here](INSTALL.md) for an install guide and [here](INSTALL_GUIDE.md) for a detailed user guide. A detailed explanation of the paradigm this framework is designed after can be found [here](johns_paper). A brief introduction is provided below.
+This framework can generate 3D tetrahedral meshes using grammar-like production rules which are derived using an evolutionary algorithm. See [here](INSTALL.md) for an install guide and [here](USER_GUIDE.md) for a user guide. A detailed explanation of the paradigm this framework is designed after can be found [here](johns_paper). A brief introduction is provided below.
 
 ## Grammar & Tetrahedrons
 
