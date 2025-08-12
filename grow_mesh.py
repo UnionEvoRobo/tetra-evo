@@ -74,7 +74,8 @@ def grow_mesh():
     """
     Grow a mesh.
     """
-
+    
+    
     grammar = read_csv(filepath=FILEPATH, id=ID)
     mesh = apply_rules(grammar, ITERS, CHECK_COLLISION)
 
