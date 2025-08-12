@@ -10,6 +10,8 @@ Given a starting “seed” tetrahedron, we can name each of the four faces of t
 * grow(A) -> A, B, C
 * divide(A) -> A, B, C, D
 
+![A visual representation of the three production rules.](img/production_rules.jpg)
+
 The face label in the parentheses is the face “consumed”, and the labels to the right of the arrow are the new face label(s) which are generated. As you can see, labels are not unique, and simply inform which production rule to use. The rename rule simply changes the label of the face. The grow rule generates a new tetrahedron using the consumed face as the base of the tetrahedron, and the three new faces of the tetrahedron are labeled according to the right-hand label list. The divide rule splits the consumed face into four triangular sub-faces, using the right-hand list to name them. To control the order faces are consumed, a queue is used and newly generated faces are added to the back of the queue. 
 
 ## Grammar Generation
