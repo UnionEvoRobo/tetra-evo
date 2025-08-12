@@ -63,7 +63,7 @@ Default arguments can be found and changed in `default_args.py`. Editing this fi
 
 ## grow_mesh.py
 
-This script can run grammars saved in .csv files. Works for both `run.csv`and `genX.csv` files generated from `evolutionary_alg.py`. Example usage: `python grow_mesh.py —filename path/to/my/run.csv —id 20`
+This script can run grammars saved in .csv files. Works for both `run.csv`and `genX.csv` files generated from `evolutionary_alg.py`. Example usage: `python grow_mesh.py —filepath path/to/my/run.csv —id 20`
 
 ### Arguments
 --filepath STR

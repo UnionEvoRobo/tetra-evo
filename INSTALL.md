@@ -21,3 +21,7 @@
 ## Install requirements
 
 `pip3 install -r requirements.txt`
+
+## Test install
+
+`python3 evolutionary_alg.py`

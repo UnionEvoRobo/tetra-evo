@@ -18,7 +18,7 @@ ID = 0 # genome id in csv file or generation if looking at a run.csv file
 SHOW_MESH = True # Whether to display the mesh after it is saved.
 
 EXPORT_FILEPATH = "meshes" # Export filepath
-EXPORT_FILENAME = "grow_mesh_test" # Export filename
+EXPORT_FILENAME = "my_mesh" # Export filename
 
 ITERS = 100
 CHECK_COLLISION = True
@@ -108,11 +108,11 @@ if __name__ == "__main__":
     parser.add_argument('--iters',
                         type=int,
                         help="number of production rules to use to grow the mesh",
-                        default=EXPORT_FILENAME)
+                        default=ITERS)
     parser.add_argument('--check_collision',
                         type=str,
                         help="whether to check for collision",
-                        default=EXPORT_FILENAME)
+                        default=CHECK_COLLISION)
     args = parser.parse_args()
 
     bool_map = {
