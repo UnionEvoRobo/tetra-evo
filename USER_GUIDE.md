@@ -91,4 +91,12 @@ This script can run grammars saved in .csv files. Works for both `run.csv`and `g
 
 A notebook for graphing runs and batches. Docs inside.
 
+## Custom Fitness Function
 
+The fitness function that is used during a run is passed into the `EvolutionRun()` constructor as a string. This class is defined in `evolutionary_alg.py`. When it's time to evaluate a grammar, `EvolutionRun.get_fitness()` is called. This method grows a mesh using the grammar and evaluates it using a match statement on the string `EvolutionRun.fitness_function` so that the correct fitness function is used.
+
+The four provided fitness functions exist as methods associated with the generated `TetrahedralMesh` object. This class is defined in `model/tetrahedral_mesh.py`. Thus, if you wish to write a new fitness function, you may want to follow these steps.
+
+1. Write a new `TetrahedralMesh` method which scores the TetrahedralMesh based on some attribute and returns a `float` or an `int`.
+2. Choose some string identifier for this new fitness function and extend the `match` statement in `EvolutionRun.get_fitness()` to call your new fitness function when your new string identifier is passed into `EvolutionRun.fitness_function`.
+3. Edit `FITNESS_FUNCTION` in `default_args.py` to use your new string identifier and consider whether the `SORT_REVERSE` flag should be set to true if a higher fitness is better.
