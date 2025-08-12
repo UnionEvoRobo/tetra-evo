@@ -371,6 +371,7 @@ def run_batch(runs: int, batch_name: str = None, batch_path: str = None):
 
     for i in range(runs):
         run_name = "run" + str(i)
+        print("RUN {} ---------------------------------------".format(i))
         my_run = EvolutionRun(generations=D.GENERATIONS, 
                             population_size=D.POPULATION_SIZE, 
                             num_elites=D.NUM_ELITES,
