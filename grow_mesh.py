@@ -20,6 +20,8 @@ SHOW_MESH = True # Whether to display the mesh after it is saved.
 EXPORT_FILEPATH = "meshes" # Export filepath
 EXPORT_FILENAME = "my_mesh" # Export filename
 
+EXPORT_EXTENSION = ".stl"
+
 ITERS = 100
 CHECK_COLLISION = True
 
@@ -78,10 +80,10 @@ def grow_mesh():
     grammar = read_csv(filepath=FILEPATH, id=ID)
     mesh = apply_rules(grammar, ITERS, CHECK_COLLISION)
 
-    mesh.export_to_stl(EXPORT_FILENAME, os.path.join(MY_PATH, EXPORT_FILEPATH))
+    mesh.export(EXPORT_EXTENSION, EXPORT_FILENAME, os.path.join(MY_PATH, EXPORT_FILEPATH))
 
     if SHOW_MESH:
-        trimesh.load_mesh(os.path.join(MY_PATH, EXPORT_FILEPATH, EXPORT_FILENAME + ".stl")).show()
+        trimesh.load_mesh(os.path.join(MY_PATH, EXPORT_FILEPATH, EXPORT_FILENAME + EXPORT_EXTENSION)).show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='RL')
@@ -113,6 +115,10 @@ if __name__ == "__main__":
                         type=str,
                         help="whether to check for collision",
                         default=CHECK_COLLISION)
+    parser.add_argument('--export_extension',
+                        type=str,
+                        help='what file extension to use for mesh export, supports ".stl" and ".obj"',
+                        default=EXPORT_EXTENSION)
     args = parser.parse_args()
 
     bool_map = {
@@ -135,8 +141,9 @@ if __name__ == "__main__":
 
     EXPORT_FILEPATH = args.export_filepath
     EXPORT_FILENAME = args.export_filename
+    EXPORT_EXTENSION = args.export_extension
 
     ITERS = args.iters
     CHECK_COLLISION = bool_map[args.check_collision]
-        
+
     grow_mesh()

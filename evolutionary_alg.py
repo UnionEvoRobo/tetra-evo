@@ -62,7 +62,8 @@ class EvolutionRun:
 
     def __init__(self, generations: int, population_size: int, num_elites: int, iters_per_run: int, mutuation_rate: float, 
                  crossover_rate: float, crossover_strategy: str, fitness_function: str, sort_reverse: bool, check_collision: bool,
-                 export_generations: bool, export_stl: bool, alphabet: list[str], run_name: str = None, data_path: str = None):
+                 export_generations: bool, export_stl: bool, export_extension: str, alphabet: list[str], run_name: str = None,
+                 data_path: str = None):
         """
         Returns an EvolutionRun instance.
 
@@ -79,6 +80,7 @@ class EvolutionRun:
             check_collision (bool): Whether the mesh should block grow commands that overlap with the mesh.
             export_generations (bool): Whether to export a .csv file representing each generation.
             export_stl (bool): Whether to export the best individual of every generation as an .stl file.
+            export_extension (str): What file extension to use when exporting meshes. Supports .stl and .obj.
             alphabet (list[str]): Possible labels for faces.
             run_name (str): Folder name to save run data under. Will save as timestamp otherwise.
             data_dir (str): Path to store run data in. Expects path-like string, defaults to /runs.
@@ -97,6 +99,7 @@ class EvolutionRun:
         self.check_collision = check_collision
         self.export_generations = export_generations
         self.export_stl = export_stl
+        self.export_extension = export_extension
         self.alphabet = alphabet
         self.run_name = run_name
 
@@ -179,13 +182,13 @@ class EvolutionRun:
             # Print grammar
             print(self.population[0][GENOME_INDEX])
 
-            # Export best .stl
+            # Export best mesh
             if self.export_stl:
                 best_mesh = TetrahedralMesh(self.population[0][GENOME_INDEX], self.check_collision)
                 for i in range(self.iters_per_run):
                     best_mesh.apply_rule()
-                best_mesh.export_to_stl("gen{}_score{}".format(str(self.current_gen), self.population[0][FITNESS_INDEX]),
-                                        self.data_path)
+                best_mesh.export(self.export_extension, "gen{}_score{}".format(str(self.current_gen), 
+                                    self.population[0][FITNESS_INDEX]), self.data_path)
 
             ### Make next generation
 
@@ -444,6 +447,10 @@ if __name__ == "__main__":
                         default=D.EXPORT_STL,
                         type=str,
                         help="whether to export the best mesh for each generation as an .stl file ('t'/'f')")
+    parser.add_argument('--export_extension',
+                        default=D.EXPORT_EXTENSION,
+                        type=str,
+                        help='what file extension to save meshes as, supports ".stl" and ".obj"')
     parser.add_argument('--run_name',
                         type=str,
                         help='name of directory to store run data in',
@@ -490,6 +497,7 @@ if __name__ == "__main__":
     D.CHECK_COLLISION = bool_map[args.check_collision]
     D.EXPORT_GENERATIONS = bool_map[args.export_generations]
     D.EXPORT_STL = bool_map[args.export_stl]
+    D.EXPORT_EXTENSION = args.export_extension
     D.RUN_NAME = str(args.run_name)
     D.DATA_PATH = str(args.data_path)
     D.BATCH_PATH = str(args.batch_path)
@@ -510,6 +518,7 @@ if __name__ == "__main__":
                             check_collision=D.CHECK_COLLISION,
                             export_generations=D.EXPORT_GENERATIONS,
                             export_stl=D.EXPORT_STL,
+                            export_extension=D.EXPORT_EXTENSION,
                             alphabet=D.ALPHABET,
                             run_name=D.RUN_NAME,
                             data_path=D.DATA_PATH)

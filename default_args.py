@@ -4,13 +4,13 @@ Default arguments for an evolution run.
 
 # Population attributes
 GENERATIONS: int = 10
-POPULATION_SIZE: int = 4
-NUM_ELITES: int = 2
+POPULATION_SIZE: int = 10
+NUM_ELITES: int = 5
 
 # Population generation
 MUTATION_RATE: float = 0.2
 CROSSOVER_RATE: float = 0.5
-CROSSOVER_STRATEGY: str = "two" # Options: "one", "two", "uniform"
+CROSSOVER_STRATEGY: str = "uniform" # Options: "one", "two", "uniform"
 
 # Mesh & Grammar settings
 ITERS_PER_RUN: int = 100
@@ -27,8 +27,9 @@ EXPORT_GENERATIONS: bool = True
 EXPORT_STL: bool = True
 DATA_PATH: bool = None # Expects path-like string, defaults to /runs when None
 RUN_NAME: str = None # Defaults to current timestamp when None
+EXPORT_EXTENSION: str = ".obj" # .stl or .obj
 
 # Run batch settings
-RUNS: int = 10
+RUNS: int = 1
 BATCH_PATH: str = None # Expects path-like string, defaults to /batches when None
 BATCH_NAME: str = None # Defaults to current timestamp when None

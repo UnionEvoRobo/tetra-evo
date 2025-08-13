@@ -20,6 +20,7 @@ from pathlib import Path
 # Tolerance for floating point math
 TOLERANCE = 1e-12
 
+
 def test_collision():
     """
     Test the collision engine for debugging purposes. Change x_trans, etc. and angled to get different situations to test.
@@ -37,13 +38,13 @@ def test_collision():
     angled = False
 
     if angled:
-        v2_0 = np.array([0.5+x_trans, 0.5+y_trans, -1+z_trans])
-        v2_1 = np.array([0.5+x_trans, 0.5+y_trans, 1+z_trans])
-        v2_2 = np.array([1+x_trans, 1+y_trans, 0+z_trans])
+        v2_0 = np.array([0.5 + x_trans, 0.5 + y_trans, -1 + z_trans])
+        v2_1 = np.array([0.5 + x_trans, 0.5 + y_trans, 1 + z_trans])
+        v2_2 = np.array([1 + x_trans, 1 + y_trans, 0 + z_trans])
     else:
-        v2_0 = np.array([0+x_trans, 0+y_trans, 0+z_trans])
-        v2_1 = np.array([1+x_trans, 0+y_trans, 0+z_trans])
-        v2_2 = np.array([0+x_trans, 1+y_trans, 0+z_trans])
+        v2_0 = np.array([0 + x_trans, 0 + y_trans, 0 + z_trans])
+        v2_1 = np.array([1 + x_trans, 0 + y_trans, 0 + z_trans])
+        v2_2 = np.array([0 + x_trans, 1 + y_trans, 0 + z_trans])
 
     # triangles
     t1 = np.array([v1_0, v1_1, v1_2])
@@ -52,6 +53,7 @@ def test_collision():
     print(intersect(t1, t2))
 
     export_triangles(t1, t2)
+
 
 def export_triangles(t1: np.ndarray, t2: np.ndarray):
     """
@@ -62,9 +64,14 @@ def export_triangles(t1: np.ndarray, t2: np.ndarray):
         t2 (np.ndarray): np.ndarry of shape (3, 3) with each row representing a point in a triangle.
     """
 
-    my_mesh = trimesh.Trimesh(vertices=np.concatenate((t1, t2), axis=0), faces=[[0, 1, 2], [3, 4, 5]], process=False, validate=False)
+    my_mesh = trimesh.Trimesh(vertices=np.concatenate((t1, t2), axis=0),
+                              faces=[[0, 1, 2], [3, 4, 5]],
+                              process=False,
+                              validate=False)
     current_file_path = Path(__file__).resolve().parent
-    my_mesh.export(os.path.join(current_file_path, "meshes", "test", "triangles.stl"))
+    my_mesh.export(
+        os.path.join(current_file_path, "meshes", "test", "triangles.stl"))
+
 
 def intervals_overlap(interval1: tuple, interval2: tuple) -> bool:
     """
@@ -86,6 +93,7 @@ def intervals_overlap(interval1: tuple, interval2: tuple) -> bool:
     overlap_end = min(end1, end2)
 
     return overlap_start < overlap_end
+
 
 def point_in_triangle_3d(point: np.ndarray, tri: np.ndarray) -> bool:
     """
@@ -116,7 +124,7 @@ def point_in_triangle_3d(point: np.ndarray, tri: np.ndarray) -> bool:
     # Compute barycentric coordinates
     denom = dot00 * dot11 - dot01 * dot01
     if np.abs(denom) < TOLERANCE:
-        return False 
+        return False
 
     inv_denom = 1 / denom
     u = (dot11 * dot02 - dot01 * dot12) * inv_denom
@@ -124,7 +132,9 @@ def point_in_triangle_3d(point: np.ndarray, tri: np.ndarray) -> bool:
 
     return (u > TOLERANCE) and (v > TOLERANCE) and (u + v < 1 - TOLERANCE)
 
-def compute_line_interval(t: np.ndarray, dv: np.ndarray, D: np.ndarray) -> tuple:
+
+def compute_line_interval(t: np.ndarray, dv: np.ndarray,
+                          D: np.ndarray) -> tuple:
     """
     Computes the interval of intersection between a triangle and a line,
     in the context of Tomas Möller's triangle intersection algorithm where
@@ -176,8 +186,9 @@ def compute_line_interval(t: np.ndarray, dv: np.ndarray, D: np.ndarray) -> tuple
 
     return (start, end)
 
-def intersect(t1: np.ndarray, n1: np.ndarray, d1: float, 
-              t2: np.ndarray, n2: np.ndarray, d2: float) -> bool:
+
+def intersect(t1: np.ndarray, n1: np.ndarray, d1: float, t2: np.ndarray,
+              n2: np.ndarray, d2: float) -> bool:
     """
     Computes if two triangles in 3D space inersect using Tomas Möller's "Fast Triangle-Triangle Intersection Test". 
     
@@ -209,33 +220,33 @@ def intersect(t1: np.ndarray, n1: np.ndarray, d1: float,
         for t1_point in t1:
             if point_in_triangle_3d(t1_point, t2):
                 return True
-            
+
         for t2_point in t2:
             if point_in_triangle_3d(t2_point, t1):
                 return True
-            
+
         return False
-    elif (d_v1 >= -TOLERANCE).all() or (d_v1 <= TOLERANCE).all() or (d_v2 >= -TOLERANCE).all() or (d_v2 <= TOLERANCE).all(): 
-        # If a d_v has all the same sign (inlucing zero since we consider points open) 
-        # one triangle's vertices are all on one side of the other's plane. 
+    elif (d_v1 >= -TOLERANCE).all() or (d_v1 <= TOLERANCE).all() or (
+            d_v2 >= -TOLERANCE).all() or (d_v2 <= TOLERANCE).all():
+        # If a d_v has all the same sign (inlucing zero since we consider points open)
+        # one triangle's vertices are all on one side of the other's plane.
         # Then they can't intersect and we are done, saving a lot of work.
 
         return False
     else:
-        # Triangles are not coplanar and not on one side of eachother's plane.  
+        # Triangles are not coplanar and not on one side of eachother's plane.
         # Then there is a line containing both triangles.
         # We want to compute the projection of v's onto that line and ultimately find the interval of t1 and t2 on that line.
         # If the intervals overlap then the triangles intersect.
 
-        D = np.cross(n1, n2) # Direction of line
+        D = np.cross(n1, n2)  # Direction of line
 
         t1_interval = compute_line_interval(t1, d_v1, D)
         t2_interval = compute_line_interval(t2, d_v2, D)
 
         # see if the intervals overlap
         return intervals_overlap(t1_interval, t2_interval)
-    
+
+
 if __name__ == "__main__":
     test_collision()
-
-

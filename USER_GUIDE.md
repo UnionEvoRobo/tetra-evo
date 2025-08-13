@@ -44,7 +44,10 @@ Default arguments can be found and changed in `default_args.py`. Editing this fi
 * Whether to generate a .csv file for each generation. Each file will contain all grammars in the generation. Options: 't', 'f'.
 
 --export_stl STR
-* Whether to export the best mesh for each generation as an .stl file. Options: 't', 'f'.
+* Whether to export the best mesh for each generation. Options: 't', 'f'.
+
+--export_extension STR
+* What file extension to use for mesh exports. Supports ".stl" and ".obj"
 
 --run_name STR
 * Name of directory to store run data in. Defaults to a timestamp.
@@ -85,7 +88,10 @@ This script can run grammars saved in .csv files. Works for both `run.csv`and `g
 * Number of production rules to use to grow the mesh.
 
 --check_collision STR
-* Whether to check for collision. 
+* Whether to check for collision.
+
+--export_extension STR
+* What file extension to use for export. Supports ".stl" and ".obj".
 
 ## plot.ipynb
 

@@ -53,7 +53,7 @@ def grow_mesh(grammar: Grammar, iters: int, filename: str):
         mesh.apply_rule()
         #mesh.export_to_stl(filename + str(i).zfill(3))
 
-    mesh.export_to_stl(filename + str(i))
+    mesh.export(filename + str(i))
         
 if __name__ == "__main__":
     grow_mesh(make_example_grammar(), ITERS, FILENAME)

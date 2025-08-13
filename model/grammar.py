@@ -1,14 +1,15 @@
 """
-Define a grammar for modifying tetrahedral meshes. Empowered with mutuation and crossover abillities.
+Define a grammar for modifying tetrahedral meshes.
+Empowered with mutuation and crossover abillities.
 
 By Thomas Breimer
 July 9th, 2025
 """
 
-import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import random
 import copy
+
 
 @dataclass
 class Rule:
@@ -21,6 +22,7 @@ class Rule:
     """
     operation: str
     rhs: list[str]
+
 
 @dataclass
 class Grammar:
@@ -85,7 +87,7 @@ class Grammar:
         """
 
         return self.rules[label].operation
-    
+
     def get_rule_rhs(self, label: str) -> list[str]:
         """
         Get the rule rhs associated with the given label.
@@ -98,7 +100,7 @@ class Grammar:
         """
 
         return self.rules[label].rhs
-    
+
     def regenerate_random(self, probability: float):
         """
         Changes rules in the grammar randomly.
@@ -109,10 +111,10 @@ class Grammar:
 
         for lhs in self.rules:
             if random.random() < probability:
-                operation = random.choice(list(self.operations.keys())) # Get random operation
-                rhs = random.sample(self.alphabet, self.operations[operation]) # Get random labels for rhs
+                operation = random.choice(list(self.operations.keys()))  # Get random operation
+                rhs = random.sample(self.alphabet, self.operations[operation])  # Get random labels for rhs
                 self.rules[lhs] = Rule(operation, rhs)
-    
+
     def generate_random(self):
         """
         Erases all rules in the grammar and generates a new random grammar.
@@ -123,12 +125,12 @@ class Grammar:
         self.clear()
 
         for label in self.alphabet:
-            operation = random.choice(list(self.operations.keys())) # Get random operation
-            rhs = random.sample(self.alphabet, self.operations[operation]) # Get random labels for rhs
+            operation = random.choice(list(self.operations.keys()))  # Get random operation
+            rhs = random.sample(self.alphabet, self.operations[operation])  # Get random labels for rhs
             self.add_rule(label, operation, rhs)
 
         return self
-    
+
     def crossover(self, other_grammar):
         """
         Execute single point crossover. Modifies both grammars in place.
@@ -142,9 +144,10 @@ class Grammar:
         my_rule_list = self.get_rules_list()
         other_rule_list = other_grammar.get_rules_list()
 
-        assert len(my_rule_list) == len(other_rule_list), "Tried to crossover two grammars with different numbers of rules!"
+        assert len(my_rule_list) == len(
+            other_rule_list), "Tried to crossover two grammars with different numbers of rules!"
 
-        pivot_location = random.randint(0, len(my_rule_list) - 1) # Choose pivot location
+        pivot_location = random.randint(0, len(my_rule_list) - 1)  # Choose pivot location
 
         # Perform crossover and set new rules
         self.set_rules_from_list(my_rule_list[0:pivot_location] + other_rule_list[pivot_location:])
@@ -164,15 +167,18 @@ class Grammar:
         my_rule_list = self.get_rules_list()
         other_rule_list = other_grammar.get_rules_list()
 
-        assert len(my_rule_list) == len(other_rule_list), "Tried to crossover two grammars with different numbers of rules!"
+        assert len(my_rule_list) == len(
+            other_rule_list), "Tried to crossover two grammars with different numbers of rules!"
 
         # Get two crossover points
         pivot_location1 = random.randint(0, len(my_rule_list) - 2)
         pivot_location2 = random.randint(pivot_location1, len(my_rule_list) - 1)
 
-        # 
-        my_new_rule_list = my_rule_list[0:pivot_location1] + other_rule_list[pivot_location1:pivot_location2] + my_rule_list[pivot_location2:]
-        other_new_rule_list = other_rule_list[0:pivot_location1] + my_rule_list[pivot_location1:pivot_location2] + other_rule_list[pivot_location2:]
+        #
+        my_new_rule_list = my_rule_list[0:pivot_location1] + other_rule_list[
+            pivot_location1:pivot_location2] + my_rule_list[pivot_location2:]
+        other_new_rule_list = other_rule_list[0:pivot_location1] + my_rule_list[
+            pivot_location1:pivot_location2] + other_rule_list[pivot_location2:]
 
         self.set_rules_from_list(my_new_rule_list)
         other_grammar.set_rules_from_list(other_new_rule_list)
@@ -187,7 +193,8 @@ class Grammar:
 
         assert self.operations == other_grammar.operations, "Tried to crossover two grammars with different operation sets!"
         assert self.alphabet == other_grammar.alphabet, "Tried to crossover two grammars with different alphabets!"
-        assert len(self.rules) == len(other_grammar.rules), "Tried to crossover two grammars with different numbers of rules!"
+        assert len(self.rules) == len(
+            other_grammar.rules), "Tried to crossover two grammars with different numbers of rules!"
 
         # Switch rules with random probability
         for lhs, rule in self.rules.items():
@@ -215,7 +222,7 @@ class Grammar:
         """
 
         return list(self.rules.items())
-    
+
     def copy(self):
         """
         Copies this grammar and returns a new identical grammar.
@@ -230,7 +237,7 @@ class Grammar:
             new_grammar.add_rule(lhs[:], rule.operation[:], copy.deepcopy(rule.rhs))
 
         return new_grammar
-    
+
     def to_dict(self):
         """
         Returns a dict representation of the Grammar in the form of {lhs0:"A", operation0:"grow", rhs0:"BCD", lhs1:...}
@@ -242,10 +249,10 @@ class Grammar:
         for i, (lhs, rule) in enumerate(self.rules.items()):
             to_return["lhs" + str(i)] = lhs
             to_return["operation" + str(i)] = rule.operation
-            to_return["rhs" + str(i)] = ''.join(rule.rhs) # Join rhs list into str
+            to_return["rhs" + str(i)] = ''.join(rule.rhs)  # Join rhs list into str
 
         return to_return
-    
+
     def __str__(self):
         """
         Returns a string representation of the Grammar.
@@ -261,44 +268,3 @@ class Grammar:
             to_return += newln
 
         return to_return
-
-
-""" Crossover sanity checks
-ALPHABET = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
-OPERATIONS = {"rename": 1, "grow": 3, "divide": 4}
-
-def make_grammar1():
-    grammar = Grammar(ALPHABET, OPERATIONS)
-    grammar.add_rule("A", "grow", ["D", "B", "F"])
-    grammar.add_rule("B", "grow", ["D", "B", "F"])
-    grammar.add_rule("C", "grow", ["D", "B", "F"])
-    grammar.add_rule("D", "grow", ["D", "B", "F"])
-    grammar.add_rule("E", "grow", ["D", "B", "F"])
-    grammar.add_rule("F", "grow", ["D", "B", "F"])
-    grammar.add_rule("G", "grow", ["D", "B", "F"])
-    grammar.add_rule("H", "grow", ["D", "B", "F"])
-    grammar.add_rule("I", "grow", ["D", "B", "F"])
-    grammar.add_rule("J", "grow", ["D", "B", "F"])
-    return grammar
-
-def make_grammar2():
-    grammar = Grammar(ALPHABET, OPERATIONS)
-    grammar.add_rule("A", "rename", ["A"])
-    grammar.add_rule("B", "rename", ["A"])
-    grammar.add_rule("C", "rename", ["A"])
-    grammar.add_rule("D", "rename", ["A"])
-    grammar.add_rule("E", "rename", ["A"])
-    grammar.add_rule("F", "rename", ["A"])
-    grammar.add_rule("G", "rename", ["A"])
-    grammar.add_rule("H", "rename", ["A"])
-    grammar.add_rule("I", "rename", ["A"])
-    grammar.add_rule("J", "rename", ["A"])
-    return grammar
-
-g1 = make_grammar1()
-g2 = make_grammar2()
-
-g1.uniform_crossover(g2)
-print(g1)
-print(g2)
-"""
