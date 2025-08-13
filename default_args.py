@@ -3,9 +3,9 @@ Default arguments for an evolution run.
 """
 
 # Population attributes
-GENERATIONS: int = 10
-POPULATION_SIZE: int = 10
-NUM_ELITES: int = 5
+GENERATIONS: int = 50
+POPULATION_SIZE: int = 20
+NUM_ELITES: int = 10
 
 # Population generation
 MUTATION_RATE: float = 0.2
@@ -27,7 +27,7 @@ EXPORT_GENERATIONS: bool = True
 EXPORT_STL: bool = True
 DATA_PATH: bool = None # Expects path-like string, defaults to /runs when None
 RUN_NAME: str = None # Defaults to current timestamp when None
-EXPORT_EXTENSION: str = ".obj" # .stl or .obj
+EXPORT_EXTENSION: str = ".stl" # .stl or .obj
 
 # Run batch settings
 RUNS: int = 1
