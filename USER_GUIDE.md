@@ -5,7 +5,7 @@ This guide provides instructions for how to use the framework.
 ## evolutionary_alg.py
 
 ### Basic Usage
-An evolutionary algorithm run can be initiated using the command `python evolutionary_alg.py`. By default, the results are saved in the `/runs` folder under a timestamped folder. Inside, you’ll find a `run.csv` file with the best fitness score for each generation along with a serialized representation of the grammar which produced that fitness score. An `info.json` file is also included so you can remember which arguments which were used.
+An evolutionary algorithm run can be initiated using the command `python evolutionary_alg.py`. By default, the results are saved in the `/runs` folder under a timestamped folder. Inside, you’ll find a `run.csv` file with the best fitness score for each generation along with a serialized representation of the grammar which produced that fitness score. An `info.json` file is also included so you can remember which arguments were used.
 
 ### Arguments
 Default arguments can be found and changed in `default_args.py`. Editing this file is the easiest way to edit run characteristics. However, command line arguments are also supported using the format`python evolutionary_algorithm.py —ARG_NAME ARG_VALUE`. A complete list of arguments can be found below.
