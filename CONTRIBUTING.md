@@ -5,7 +5,7 @@
    ```bash
    git checkout -b name-of-bugfix-or-feature
    ```
-1. We follow the style guide published on the course Nexus.
+1. We follow the style guide published on the lab drive.
 
 1. Now make the appropriate changes locally. 
 
