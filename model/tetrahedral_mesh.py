@@ -375,6 +375,8 @@ class TetrahedralMesh:
                     np.array(new_face_vertices))
                 if collides:
                     return False
+                
+        self.faces.remove(face)  # Delete the face to be grown over
 
         # Build new faces & store tetra
         self.add_face(new_face_names[0], face0_vertices)
